@@ -371,13 +371,15 @@ async function checkLiveMatches() {
     for (const match of liveMatches) {
       const homeGoals = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? 0;
       const awayGoals = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? 0;
-      const score = `${homeGoals}:${awayGoals}`;
+      const minute = match.minute || '';
+      const score = `${homeGoals}:${awayGoals} ${minute}'`.trim();
 
-      // Update win market with live score in title
+      // Update win market with live score + minute
       await sb(`/rest/v1/markets?external_id=eq.football_win_${match.id}`, 'PATCH', {
         live_score: score,
         is_live: true
       });
+      console.log(`  LIVE: ${match.homeTeam?.name} ${score} ${match.awayTeam?.name}`);
     }
 
     // Mark finished matches as not live
