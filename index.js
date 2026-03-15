@@ -461,9 +461,347 @@ console.log('🏟 Sports: Football (PL/PD/SA/BL1/CL), NBA, F1');
 ensureSchema().then(() => {
   // Run immediately on startup
   runDailyJob();
+  // Parse news on startup too
+  setTimeout(createNewsMarkets, 5000);
 });
 
 // Keep alive
 setInterval(() => {
   console.log('💓 Server alive:', new Date().toISOString());
 }, 60 * 60 * 1000); // every hour
+
+// ══════════════════════════════════════════════════════════════════
+// ── NEWS PARSER — автоматические рынки из новостей ────────────────
+// ══════════════════════════════════════════════════════════════════
+
+const NEWS_SOURCES = [
+  // Крипто
+  { url: 'https://cointelegraph.com/rss', cat: 'crypto', lang: 'en' },
+  { url: 'https://coindesk.com/arc/outboundfeeds/rss/', cat: 'crypto', lang: 'en' },
+  // Политика/Мировые новости
+  { url: 'https://feeds.bbci.co.uk/news/world/rss.xml', cat: 'politics', lang: 'en' },
+  { url: 'https://rss.reuters.com/reuters/worldNews', cat: 'politics', lang: 'en' },
+  // Технологии/AI
+  { url: 'https://techcrunch.com/feed/', cat: 'crypto', lang: 'en' },
+  { url: 'https://www.theverge.com/rss/index.xml', cat: 'culture', lang: 'en' },
+];
+
+// Templates for generating market questions from news
+const MARKET_TEMPLATES = {
+  crypto: [
+    {
+      keywords: ['bitcoin', 'btc'],
+      patterns: [
+        { match: /\$[\d,]+k?/i, fn: (price) => {
+          const num = parseFloat(price.replace(/[$,k]/gi, '')) * (price.toLowerCase().includes('k') ? 1000 : 1);
+          const target = Math.round(num * 1.1 / 1000) * 1000;
+          return {
+            ru: `Bitcoin достигнет $${target.toLocaleString()} до конца месяца?`,
+            uk: `Bitcoin досягне $${target.toLocaleString()} до кінця місяця?`,
+            en: `Will Bitcoin reach $${target.toLocaleString()} by end of month?`,
+            prob: 45, emoji: '₿', days: 30
+          };
+        }},
+        { match: /fall|crash|drop|dump/i, fn: () => ({
+          ru: 'Bitcoin упадёт ниже $70,000 в ближайшие 30 дней?',
+          uk: 'Bitcoin впаде нижче $70,000 найближчі 30 днів?',
+          en: 'Will Bitcoin drop below $70,000 in the next 30 days?',
+          prob: 30, emoji: '📉', days: 30
+        })},
+        { match: /etf|институц/i, fn: () => ({
+          ru: 'Bitcoin ETF привлечёт более $1 млрд за неделю?',
+          uk: 'Bitcoin ETF залучить більше $1 млрд за тиждень?',
+          en: 'Will Bitcoin ETF attract more than $1B in a week?',
+          prob: 55, emoji: '₿', days: 14
+        })},
+      ]
+    },
+    {
+      keywords: ['ethereum', 'eth'],
+      patterns: [
+        { match: /\$[\d,]+/i, fn: (price) => {
+          const num = parseFloat(price.replace(/[$,]/g, ''));
+          const target = Math.round(num * 1.15 / 100) * 100;
+          return {
+            ru: `Ethereum превысит $${target.toLocaleString()} до конца месяца?`,
+            uk: `Ethereum перевищить $${target.toLocaleString()} до кінця місяця?`,
+            en: `Will Ethereum exceed $${target.toLocaleString()} by end of month?`,
+            prob: 42, emoji: '📈', days: 30
+          };
+        }},
+        { match: /upgrade|update|merge/i, fn: () => ({
+          ru: 'Обновление Ethereum выйдет без серьёзных проблем?',
+          uk: 'Оновлення Ethereum вийде без серйозних проблем?',
+          en: 'Will the Ethereum upgrade launch without major issues?',
+          prob: 78, emoji: '⚡', days: 14
+        })},
+      ]
+    },
+    {
+      keywords: ['solana', 'sol'],
+      patterns: [
+        { match: /.+/i, fn: () => ({
+          ru: 'Solana войдёт в топ-3 криптовалют по капитализации?',
+          uk: 'Solana увійде в топ-3 криптовалют за капіталізацією?',
+          en: 'Will Solana enter the top 3 cryptos by market cap?',
+          prob: 38, emoji: '🚀', days: 60
+        })},
+      ]
+    },
+    {
+      keywords: ['sec', 'regulation', 'crypto law', 'регулирование'],
+      patterns: [
+        { match: /.+/i, fn: () => ({
+          ru: 'SEC примет новые правила для крипты в ближайшие 60 дней?',
+          uk: 'SEC прийме нові правила для крипти найближчі 60 днів?',
+          en: 'Will the SEC adopt new crypto rules in the next 60 days?',
+          prob: 52, emoji: '⚡', days: 60
+        })},
+      ]
+    },
+    {
+      keywords: ['fed', 'federal reserve', 'interest rate', 'ставка'],
+      patterns: [
+        { match: /cut|lower|снизит/i, fn: () => ({
+          ru: 'ФРС снизит ставку на следующем заседании?',
+          uk: 'ФРС знизить ставку на наступному засіданні?',
+          en: 'Will the Fed cut rates at the next meeting?',
+          prob: 60, emoji: '💰', days: 45
+        })},
+        { match: /raise|hike|повысит/i, fn: () => ({
+          ru: 'ФРС повысит ставку на следующем заседании?',
+          uk: 'ФРС підвищить ставку на наступному засіданні?',
+          en: 'Will the Fed raise rates at the next meeting?',
+          prob: 25, emoji: '📊', days: 45
+        })},
+      ]
+    },
+  ],
+  politics: [
+    {
+      keywords: ['trump', 'трамп'],
+      patterns: [
+        { match: /impeach|импич/i, fn: () => ({
+          ru: 'Трамп переживёт попытку импичмента в 2026?',
+          uk: 'Трамп переживе спробу імпічменту у 2026?',
+          en: 'Will Trump survive an impeachment attempt in 2026?',
+          prob: 72, emoji: '🇺🇸', days: 180
+        })},
+        { match: /sign|закон|bill/i, fn: () => ({
+          ru: 'Трамп подпишет новый закон в ближайшие 30 дней?',
+          uk: 'Трамп підпише новий закон найближчі 30 днів?',
+          en: 'Will Trump sign a new major bill in the next 30 days?',
+          prob: 65, emoji: '🏛', days: 30
+        })},
+      ]
+    },
+    {
+      keywords: ['ukraine', 'україна', 'zelensky', 'зеленский', 'war', 'ceasefire'],
+      patterns: [
+        { match: /ceasefire|перемирие|перемир/i, fn: () => ({
+          ru: 'Перемирие на Украине будет подписано до июня 2026?',
+          uk: 'Перемир\'я в Україні буде підписано до червня 2026?',
+          en: 'Will a Ukraine ceasefire be signed before June 2026?',
+          prob: 48, emoji: '🇺🇦', days: 90
+        })},
+        { match: /aid|помощь|weapons/i, fn: () => ({
+          ru: 'США одобрят новый пакет помощи Украине в 2026?',
+          uk: 'США схвалять новий пакет допомоги Україні у 2026?',
+          en: 'Will the US approve a new Ukraine aid package in 2026?',
+          prob: 58, emoji: '🌍', days: 60
+        })},
+      ]
+    },
+    {
+      keywords: ['election', 'выборы', 'вибори', 'poll', 'vote'],
+      patterns: [
+        { match: /.+/i, fn: () => ({
+          ru: 'Действующий лидер выиграет следующие выборы?',
+          uk: 'Чинний лідер виграє наступні вибори?',
+          en: 'Will the incumbent win the upcoming election?',
+          prob: 52, emoji: '🗳', days: 90
+        })},
+      ]
+    },
+    {
+      keywords: ['china', 'китай', 'taiwan', 'тайвань'],
+      patterns: [
+        { match: /.+/i, fn: () => ({
+          ru: 'Китай введёт новые санкции до конца 2026?',
+          uk: 'Китай введе нові санкції до кінця 2026?',
+          en: 'Will China impose new sanctions by end of 2026?',
+          prob: 44, emoji: '🇨🇳', days: 180
+        })},
+      ]
+    },
+  ],
+  culture: [
+    {
+      keywords: ['openai', 'gpt', 'chatgpt'],
+      patterns: [
+        { match: /gpt-5|gpt5/i, fn: () => ({
+          ru: 'OpenAI выпустит GPT-5 в ближайшие 3 месяца?',
+          uk: 'OpenAI випустить GPT-5 найближчі 3 місяці?',
+          en: 'Will OpenAI release GPT-5 in the next 3 months?',
+          prob: 62, emoji: '🤖', days: 90
+        })},
+        { match: /.+/i, fn: () => ({
+          ru: 'OpenAI анонсирует новый продукт до конца квартала?',
+          uk: 'OpenAI анонсує новий продукт до кінця кварталу?',
+          en: 'Will OpenAI announce a new product before end of quarter?',
+          prob: 70, emoji: '🤖', days: 45
+        })},
+      ]
+    },
+    {
+      keywords: ['apple', 'iphone', 'apple intelligence'],
+      patterns: [
+        { match: /release|launch|выпуск/i, fn: () => ({
+          ru: 'Apple выпустит новый продукт до конца квартала?',
+          uk: 'Apple випустить новий продукт до кінця кварталу?',
+          en: 'Will Apple release a new product before end of quarter?',
+          prob: 68, emoji: '💡', days: 45
+        })},
+      ]
+    },
+    {
+      keywords: ['elon', 'musk', 'tesla', 'spacex'],
+      patterns: [
+        { match: /twitter|x\.com/i, fn: () => ({
+          ru: 'X (Twitter) достигнет 1 млрд пользователей в 2026?',
+          uk: 'X (Twitter) досягне 1 млрд користувачів у 2026?',
+          en: 'Will X (Twitter) reach 1B users in 2026?',
+          prob: 35, emoji: '🌟', days: 180
+        })},
+        { match: /.+/i, fn: () => ({
+          ru: 'Tesla выпустит Robotaxi до конца 2026?',
+          uk: 'Tesla випустить Robotaxi до кінця 2026?',
+          en: 'Will Tesla launch Robotaxi by end of 2026?',
+          prob: 58, emoji: '🚀', days: 180
+        })},
+      ]
+    },
+    {
+      keywords: ['game', 'gta', 'playstation', 'xbox', 'nintendo'],
+      patterns: [
+        { match: /gta|grand theft/i, fn: () => ({
+          ru: 'GTA VI выйдет без переноса в 2026?',
+          uk: 'GTA VI вийде без перенесення у 2026?',
+          en: 'Will GTA VI launch in 2026 without delays?',
+          prob: 68, emoji: '🎮', days: 180
+        })},
+      ]
+    },
+  ]
+};
+
+async function parseRSSFeed(url) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Eventon/1.0 RSS Reader' },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!res.ok) return [];
+    const xml = await res.text();
+
+    // Simple XML parser for RSS items
+    const items = [];
+    const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+    let match;
+    while ((match = itemRegex.exec(xml)) !== null) {
+      const item = match[1];
+      const title = (item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) ||
+                     item.match(/<title>(.*?)<\/title>/))?.[1] || '';
+      const desc = (item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/) ||
+                    item.match(/<description>(.*?)<\/description>/))?.[1] || '';
+      const pubDate = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '';
+
+      if (title) items.push({
+        title: title.replace(/<[^>]*>/g, '').trim(),
+        desc: desc.replace(/<[^>]*>/g, '').trim().substring(0, 200),
+        pubDate
+      });
+    }
+    return items.slice(0, 10); // Top 10 items
+  } catch(e) {
+    console.log(`RSS error for ${url}:`, e.message);
+    return [];
+  }
+}
+
+function findMarketTemplate(text, cat) {
+  const lowerText = text.toLowerCase();
+  const templates = MARKET_TEMPLATES[cat] || [];
+
+  for (const template of templates) {
+    const hasKeyword = template.keywords.some(kw => lowerText.includes(kw));
+    if (!hasKeyword) continue;
+
+    for (const pattern of template.patterns) {
+      const match = lowerText.match(pattern.match);
+      if (match) {
+        // Extract price/number if present
+        const priceMatch = text.match(/\$[\d,]+k?/i);
+        try {
+          const market = pattern.fn(priceMatch ? priceMatch[0] : match[0]);
+          if (market) return market;
+        } catch(e) {}
+      }
+    }
+  }
+  return null;
+}
+
+async function newsMarketExists(title_ru) {
+  // Check if similar market already exists (last 7 days)
+  const data = await sb('/rest/v1/markets?title_ru=eq.' + encodeURIComponent(title_ru) + '&select=id');
+  return data && data.length > 0;
+}
+
+async function createNewsMarkets() {
+  console.log('\n📰 Parsing news for market ideas...');
+  let created = 0;
+
+  for (const source of NEWS_SOURCES) {
+    console.log(`  Fetching: ${source.url}`);
+    const items = await parseRSSFeed(source.url);
+    console.log(`  Got ${items.length} items`);
+
+    for (const item of items) {
+      const fullText = item.title + ' ' + item.desc;
+      const market = findMarketTemplate(fullText, source.cat);
+
+      if (!market) continue;
+
+      // Skip if market already exists
+      if (await newsMarketExists(market.ru)) {
+        console.log(`  Skip (exists): ${market.ru.substring(0, 50)}`);
+        continue;
+      }
+
+      await sb('/rest/v1/markets', 'POST', {
+        emoji: market.emoji,
+        cat: source.cat,
+        title_ru: market.ru,
+        title_uk: market.uk,
+        title_en: market.en,
+        yes_prob: market.prob,
+        volume: 0,
+        trades: 0,
+        deadline_days: market.days,
+        active: true,
+      });
+
+      console.log(`  ✓ Created: ${market.ru.substring(0, 60)}`);
+      created++;
+      await new Promise(r => setTimeout(r, 500)); // rate limit
+    }
+
+    await new Promise(r => setTimeout(r, 1000)); // between sources
+  }
+
+  console.log(`📰 News markets done: ${created} new markets created`);
+}
+
+// Schedule news parsing every 6 hours
+cron.schedule('0 */6 * * *', createNewsMarkets);
