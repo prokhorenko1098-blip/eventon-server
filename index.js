@@ -173,6 +173,14 @@ async function createFootballMarkets() {
     const daysUntil = Math.ceil((matchDate - new Date()) / (1000 * 60 * 60 * 24));
 
     // Create 3 markets per match
+    // Format match time in local-friendly way
+    const matchTimeStr = matchDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kiev' });
+    const matchDateStr = matchDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', timeZone: 'Europe/Kiev' });
+    const today = new Date();
+    const isToday = matchDate.toDateString() === today.toDateString();
+    const isTomorrow = matchDate.toDateString() === new Date(today.getTime() + 86400000).toDateString();
+    const dateLabel = isToday ? `Сег. ${matchTimeStr}` : isTomorrow ? `Завтра ${matchTimeStr}` : `${matchDateStr} ${matchTimeStr}`;
+
     const markets = [
       {
         external_id: `football_win_${match.id}`,
@@ -186,6 +194,7 @@ async function createFootballMarkets() {
         trades: 0,
         deadline_days: Math.max(1, daysUntil + 1),
         active: true,
+        live_score: dateLabel,
       },
       {
         external_id: `football_goals_${match.id}`,
@@ -373,19 +382,13 @@ async function checkLiveMatches() {
       const awayGoals = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? 0;
 
       // Get match minute and status
-      let timeLabel = '';
+      // minute not available on free plan - use status
       const status = match.status;
-      const minute = match.minute;
-
-      if (status === 'IN_PLAY') {
-        timeLabel = minute ? `${minute}'` : 'LIVE';
-      } else if (status === 'PAUSED' || status === 'HALF_TIME') {
-        timeLabel = 'ПТ'; // Перерыв
-      } else if (status === 'EXTRA_TIME') {
-        timeLabel = `ДВ ${minute}'`;
-      } else if (status === 'PENALTY') {
-        timeLabel = 'Пен.';
-      }
+      let timeLabel = 'LIVE';
+      if (status === 'HALF_TIME' || status === 'PAUSED') timeLabel = 'ПТ';
+      else if (status === 'EXTRA_TIME') timeLabel = 'ДВ';
+      else if (status === 'PENALTY_SHOOTOUT') timeLabel = 'Пен';
+      else if (status === 'IN_PLAY') timeLabel = 'LIVE';
 
       const score = `${homeGoals}:${awayGoals} ${timeLabel}`.trim();
 
