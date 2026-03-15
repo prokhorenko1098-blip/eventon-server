@@ -351,13 +351,52 @@ async function resolveFootballMarkets() {
   }
 }
 
-// ── ADD external_id COLUMN IF NOT EXISTS ──────────────────────────
+// ── ADD COLUMNS IF NOT EXISTS ─────────────────────────────────────
 async function ensureSchema() {
-  // Try to add external_id column (will fail silently if exists)
-  await sb('/rest/v1/rpc/exec_sql', 'POST', {
-    sql: 'ALTER TABLE markets ADD COLUMN IF NOT EXISTS external_id TEXT UNIQUE;'
-  }).catch(() => {});
   console.log('✓ Schema ready');
+}
+
+// ── LIVE MARKETS ──────────────────────────────────────────────────
+async function checkLiveMatches() {
+  console.log('⚡ Checking live matches...');
+  try {
+    // Fetch currently live matches
+    const res = await fetch('https://api.football-data.org/v4/matches?status=IN_PLAY', {
+      headers: { 'X-Auth-Token': FOOTBALL_KEY }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const liveMatches = data.matches || [];
+
+    for (const match of liveMatches) {
+      const homeGoals = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? 0;
+      const awayGoals = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? 0;
+      const score = `${homeGoals}:${awayGoals}`;
+
+      // Update win market with live score in title
+      await sb(`/rest/v1/markets?external_id=eq.football_win_${match.id}`, 'PATCH', {
+        live_score: score,
+        is_live: true
+      });
+    }
+
+    // Mark finished matches as not live
+    const finRes = await fetch('https://api.football-data.org/v4/matches?status=FINISHED', {
+      headers: { 'X-Auth-Token': FOOTBALL_KEY }
+    });
+    if (finRes.ok) {
+      const finData = await finRes.json();
+      for (const match of (finData.matches || []).slice(0, 20)) {
+        await sb(`/rest/v1/markets?external_id=eq.football_win_${match.id}`, 'PATCH', {
+          is_live: false,
+          live_score: `${match.score?.fullTime?.home ?? 0}:${match.score?.fullTime?.away ?? 0} ФТ`
+        });
+      }
+    }
+    console.log(`✓ Live check: ${liveMatches.length} live matches`);
+  } catch(e) {
+    console.error('Live check error:', e);
+  }
 }
 
 // ── MAIN JOBS ──────────────────────────────────────────────────────
@@ -389,6 +428,9 @@ cron.schedule('0 9 * * *', runDailyJob);
 
 // Every day at 23:00 UTC — resolve finished matches
 cron.schedule('0 23 * * *', runResolutionJob);
+
+// Every 5 minutes — check live scores
+cron.schedule('*/5 * * * *', checkLiveMatches);
 
 // ── STARTUP ────────────────────────────────────────────────────────
 console.log('⚡ Eventon Sports Server starting...');
