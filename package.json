@@ -1,0 +1,14 @@
+{
+  "name": "eventon-server",
+  "version": "1.0.0",
+  "description": "Eventon sports markets auto-creator",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "node-cron": "^3.0.3",
+    "node-fetch": "^2.7.0"
+  }
+}
