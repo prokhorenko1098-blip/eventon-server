@@ -1,0 +1,2691 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Eventon</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f2f8;
+    --muted: #6b7280;
+    --yes: #00e5a0;
+    --yes-dim: rgba(0,229,160,0.12);
+    --no: #ff4d6a;
+    --no-dim: rgba(255,77,106,0.12);
+    --accent: #5b8af0;
+    --accent-dim: rgba(91,138,240,0.15);
+    --ton: #0098ea;
+    --gold: #f5c842;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); font-family: 'Geist', sans-serif; color: var(--text); }
+
+  #app { height: 100vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; height: 100%; box-sizing: border-box; }
+  .screen.hidden { display: none !important; }
+
+  .scroll-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: 80px; }
+  .scroll-body::-webkit-scrollbar { display: none; }
+
+  .header { padding: 16px 16px 12px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; background: linear-gradient(to bottom, var(--bg), transparent); position: relative; z-index: 2; }
+  .header-back { width: 36px; height: 36px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
+  .header-back:active { transform: scale(0.92); background: var(--surface2); }
+  .header-title { font-family: 'Clash Display', sans-serif; font-size: 18px; font-weight: 600; flex: 1; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 68px; background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 8px; padding-bottom: env(safe-area-inset-bottom); z-index: 100; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; cursor: pointer; transition: all 0.15s; opacity: 0.45; }
+  .nav-item.active { opacity: 1; }
+  .nav-item:active { transform: scale(0.9); }
+  .nav-icon { font-size: 20px; line-height: 1; }
+  .nav-label { font-size: 10px; font-weight: 500; letter-spacing: 0.02em; }
+  .nav-item.active .nav-label { color: var(--accent); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; cursor: pointer; transition: all 0.2s; }
+  .card:active { transform: scale(0.98); border-color: var(--border2); }
+
+  .market-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .market-card-top { display: flex; align-items: flex-start; gap: 10px; }
+  .market-emoji { width: 40px; height: 40px; background: var(--surface2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .market-info { flex: 1; min-width: 0; }
+  .market-category { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .market-title { font-family: 'Clash Display', sans-serif; font-size: 15px; font-weight: 600; line-height: 1.3; }
+  .market-bar { height: 6px; background: var(--no); border-radius: 99px; overflow: hidden; }
+  .market-bar-fill { height: 100%; border-radius: 99px; background: var(--yes); transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+  .market-meta { display: flex; align-items: center; justify-content: space-between; }
+  .market-prob { display: flex; align-items: center; gap: 12px; }
+  .prob-yes { font-family: 'Geist Mono', monospace; font-size: 14px; font-weight: 600; color: var(--yes); }
+  .prob-no { font-family: 'Geist Mono', monospace; font-size: 14px; font-weight: 500; color: var(--no); }
+  .market-vol { font-size: 11px; color: var(--muted); }
+  .market-deadline { font-size: 11px; color: var(--muted); }
+
+  .tabs { display: flex; gap: 8px; padding: 0 16px 12px; overflow-x: auto; flex-shrink: 0; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 7px 14px; border-radius: 99px; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: all 0.2s; border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tab:active { transform: scale(0.95); }
+
+  .hero { padding: 0 16px 20px; }
+  .hero-inner { background: linear-gradient(135deg, #0f1629 0%, #111827 50%, #0a1220 100%); border: 1px solid rgba(91,138,240,0.2); border-radius: 20px; padding: 20px; position: relative; overflow: hidden; }
+  .hero-inner::before { content: ''; position: absolute; top: -40px; right: -40px; width: 120px; height: 120px; background: radial-gradient(circle, rgba(91,138,240,0.15) 0%, transparent 70%); pointer-events: none; }
+  .hero-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+  .hero-value { font-family: 'Clash Display', sans-serif; font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .hero-sub { font-size: 12px; color: var(--muted); }
+  .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .hero-stat { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px; }
+  .hero-stat-val { font-family: 'Geist Mono', monospace; font-size: 16px; font-weight: 600; color: var(--yes); }
+  .hero-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .feed { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 16px; }
+
+  .detail-hero { padding: 0 16px 16px; }
+  .detail-hero-inner { background: var(--surface2); border-radius: 20px; padding: 20px; }
+  .detail-emoji-big { font-size: 40px; margin-bottom: 12px; }
+  .detail-cat { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .detail-title { font-family: 'Clash Display', sans-serif; font-size: 20px; font-weight: 700; line-height: 1.3; margin-bottom: 16px; }
+  .detail-prob-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .prob-badge { padding: 6px 14px; border-radius: 99px; font-family: 'Geist Mono', monospace; font-size: 16px; font-weight: 700; }
+  .prob-badge.yes { background: var(--yes-dim); color: var(--yes); }
+  .prob-badge.no { background: var(--no-dim); color: var(--no); }
+  .prob-label { font-size: 12px; color: var(--muted); }
+  .detail-bar { height: 8px; background: var(--no); border-radius: 99px; overflow: hidden; margin-bottom: 12px; }
+  .detail-bar-fill { height: 100%; background: var(--yes); border-radius: 99px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+  .detail-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .detail-stat { background: var(--surface); border-radius: 10px; padding: 10px; text-align: center; }
+  .detail-stat-val { font-family: 'Geist Mono', monospace; font-size: 14px; font-weight: 600; color: var(--text); }
+  .detail-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .chart-section { padding: 0 16px 16px; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; overflow: hidden; }
+  canvas.chart { width: 100%; height: 120px; display: block; }
+
+  .bet-section { padding: 0 16px 16px; }
+  .bet-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .bet-btn { padding: 14px; border-radius: 14px; border: 2px solid transparent; font-family: 'Clash Display', sans-serif; font-size: 16px; font-weight: 700; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .bet-btn.yes { background: var(--yes-dim); color: var(--yes); border-color: rgba(0,229,160,0.2); }
+  .bet-btn.yes.selected { background: var(--yes); color: #000; border-color: var(--yes); }
+  .bet-btn.no { background: var(--no-dim); color: var(--no); border-color: rgba(255,77,106,0.2); }
+  .bet-btn.no.selected { background: var(--no); color: #fff; border-color: var(--no); }
+  .amount-input { background: var(--surface2); border: 1px solid var(--border2); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .amount-input input { flex: 1; background: none; border: none; outline: none; font-family: 'Geist Mono', monospace; font-size: 22px; font-weight: 600; color: var(--text); width: 0; }
+  .amount-input input::placeholder { color: var(--muted); }
+  .amount-currency { font-size: 13px; font-weight: 600; color: var(--ton); }
+  .quick-amounts { display: flex; gap: 6px; margin-bottom: 14px; }
+  .quick-btn { flex: 1; padding: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; text-align: center; transition: all 0.15s; }
+  .quick-btn:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); transform: scale(0.95); }
+  .bet-preview { background: var(--surface2); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .bet-preview-row { display: flex; justify-content: space-between; align-items: center; }
+  .bet-preview-label { font-size: 12px; color: var(--muted); }
+  .bet-preview-val { font-family: 'Geist Mono', monospace; font-size: 13px; font-weight: 600; color: var(--text); }
+  .bet-preview-val.yes { color: var(--yes); }
+  .cta-btn { width: 100%; padding: 16px; background: var(--accent); border: none; border-radius: 14px; font-family: 'Clash Display', sans-serif; font-size: 17px; font-weight: 700; color: #fff; cursor: pointer; transition: all 0.2s; }
+  .cta-btn:active { transform: scale(0.97); opacity: 0.9; }
+  .cta-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .cta-btn.yes-btn { background: var(--yes); color: #000; }
+  .cta-btn.no-btn { background: var(--no); }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s; padding: 24px; }
+  .overlay.active { opacity: 1; pointer-events: all; }
+  .overlay-card { background: var(--surface); border: 1px solid var(--border2); border-radius: 24px; padding: 32px 24px; text-align: center; width: 100%; max-width: 340px; }
+  .overlay-icon { font-size: 56px; margin-bottom: 16px; animation: pop 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+  .overlay-title { font-family: 'Clash Display', sans-serif; font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+  .overlay-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+  .overlay-detail { background: var(--surface2); border-radius: 12px; padding: 14px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 8px; }
+  .overlay-row { display: flex; justify-content: space-between; }
+  .overlay-lbl { font-size: 12px; color: var(--muted); }
+  .overlay-val { font-family: 'Geist Mono', monospace; font-size: 13px; font-weight: 600; }
+
+  .portfolio-header { padding: 0 16px 16px; }
+  .balance-card { background: linear-gradient(135deg, #0d1f3c, #0f2040); border: 1px solid rgba(0,152,234,0.25); border-radius: 20px; padding: 22px; }
+  .balance-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ton); margin-bottom: 6px; }
+  .balance-amount { font-family: 'Clash Display', sans-serif; font-size: 38px; font-weight: 700; color: #fff; }
+  .balance-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .balance-pnl { display: flex; align-items: center; gap: 6px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .pnl-positive { color: var(--yes); font-family: 'Geist Mono', monospace; font-size: 15px; font-weight: 600; }
+  .pnl-label { font-size: 12px; color: var(--muted); }
+  .positions-list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
+  .position-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .position-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .position-emoji { font-size: 22px; }
+  .position-title { font-size: 13px; font-weight: 600; line-height: 1.3; flex: 1; }
+  .position-side { padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+  .position-side.yes { background: var(--yes-dim); color: var(--yes); }
+  .position-side.no { background: var(--no-dim); color: var(--no); }
+  .position-bottom { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+  .pos-stat { background: var(--surface2); border-radius: 8px; padding: 8px; }
+  .pos-stat-val { font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 600; }
+  .pos-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .pos-stat-val.green { color: var(--yes); }
+  .pos-stat-val.red { color: var(--no); }
+
+  .lb-list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
+  .lb-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+  .lb-rank { font-family: 'Geist Mono', monospace; font-size: 15px; font-weight: 700; width: 28px; text-align: center; flex-shrink: 0; }
+  .lb-rank.gold { color: var(--gold); }
+  .lb-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .lb-name { flex: 1; font-size: 14px; font-weight: 600; }
+  .lb-profit { font-family: 'Geist Mono', monospace; font-size: 14px; font-weight: 700; color: var(--yes); }
+  .lb-accuracy { font-size: 11px; color: var(--muted); text-align: right; }
+
+  .fade-in { animation: fadeIn 0.4s ease; }
+
+
+  /* ── BET SCREEN ── */
+  .bet-screen { }
+  .bet-date-header { padding: 10px 16px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .match-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin: 0 12px 10px; overflow: hidden; }
+  .match-header { padding: 10px 14px 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .match-league { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .match-time { font-size: 11px; color: var(--ton); font-weight: 600; }
+  .match-time.live { color: #ef4444; animation: pulse 1.5s infinite; }
+  .match-teams { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 10px; gap: 8px; }
+  .match-team { flex: 1; text-align: center; }
+  .match-team-name { font-size: 14px; font-weight: 700; line-height: 1.2; }
+  .match-team-flag { font-size: 22px; margin-bottom: 4px; }
+  .match-vs { font-size: 12px; color: var(--muted); font-weight: 600; flex-shrink: 0; }
+  .match-score-live { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+  .match-score-nums { display: flex; align-items: center; gap: 6px; }
+  .match-score-num { font-family: 'Clash Display', sans-serif; font-size: 28px; font-weight: 700; color: #fff; min-width: 28px; text-align: center; }
+  .match-score-sep { font-size: 20px; font-weight: 700; color: var(--muted); }
+  .match-score-time { font-size: 11px; font-weight: 700; color: #ef4444; margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #ef4444; animation: pulse 1s infinite; display: inline-block; }
+  .match-odds { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 0 12px 12px; }
+  .match-odds-wide { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 12px 8px; }
+  .odds-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 6px; text-align: center; cursor: pointer; transition: all 0.15s; }
+  .odds-btn:active { transform: scale(0.95); }
+  .odds-btn.selected { background: rgba(0,152,234,0.15); border-color: var(--ton); }
+  .odds-btn-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+  .odds-btn-val { font-size: 15px; font-weight: 700; color: var(--text); font-family: 'Geist Mono', monospace; }
+  .odds-btn.selected .odds-btn-val { color: var(--ton); }
+  .odds-section-title { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); padding: 6px 14px 4px; }
+
+
+  .inline-bet-panel { background: linear-gradient(135deg,rgba(0,152,234,0.08),rgba(0,106,181,0.08)); border: 1px solid rgba(0,152,234,0.25); border-radius: 14px; padding: 14px; margin: 0 12px 10px; animation: fadeIn 0.2s ease; }
+  .inline-bet-amounts { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 10px; }
+  .inline-bet-amount { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Geist', sans-serif; color: var(--text); }
+  .inline-bet-amount:active { transform: scale(0.95); }
+  .inline-bet-amount.selected { background: var(--ton); border-color: var(--ton); color: #fff; }
+  .inline-bet-input-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .inline-bet-input { flex: 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 10px 12px; font-size: 16px; font-weight: 700; color: var(--text); font-family: 'Geist Mono', monospace; outline: none; }
+  .inline-bet-input:focus { border-color: var(--ton); }
+  .inline-bet-confirm { background: linear-gradient(135deg,var(--ton),#006ab5); border: none; border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; font-family: 'Geist', sans-serif; white-space: nowrap; }
+  .inline-bet-potential { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+  .inline-bet-potential span { color: var(--yes); font-weight: 700; font-family: 'Geist Mono', monospace; }
+
+
+  /* Betslip modal */
+  .betslip-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+  .betslip-item-match { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+  .betslip-item-pick { font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; }
+  .betslip-item-odds { color: var(--ton); font-family: 'Geist Mono', monospace; }
+  .betslip-stake-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .betslip-stake-input { flex: 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 14px; font-size: 18px; font-weight: 700; color: var(--text); font-family: 'Geist Mono', monospace; outline: none; }
+  .betslip-stake-input:focus { border-color: var(--ton); }
+  .betslip-potential { background: var(--surface2); border: 1px solid rgba(16,185,129,0.2); border-radius: 10px; padding: 10px 14px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+
+  /* ── DEPOSIT ── */
+
+  .deposit-btn {
+    background: linear-gradient(135deg, var(--ton), #006ab5);
+    border: none; border-radius: 14px; padding: 14px;
+    font-family: 'Geist', sans-serif; font-size: 15px; font-weight: 700;
+    color: #fff; width: 100%; cursor: pointer; margin-top: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.2s;
+  }
+  .deposit-btn:active { transform: scale(0.97); opacity: 0.9; }
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 300; display: flex; align-items: flex-end;
+    animation: fadeIn 0.2s ease;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-sheet {
+    background: var(--surface); border-radius: 24px 24px 0 0;
+    padding: 24px 20px 40px; width: 100%;
+    animation: slideUp 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle { width: 40px; height: 4px; background: var(--border2); border-radius: 99px; margin: 0 auto 20px; }
+  .modal-title { font-family: 'Clash Display', sans-serif; font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+  .deposit-amounts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+  .deposit-amount-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 6px; font-size: 13px; font-weight: 700;
+    color: var(--text); cursor: pointer; text-align: center; transition: all 0.15s;
+    font-family: 'Geist', sans-serif;
+  }
+  .deposit-amount-btn.selected { background: var(--ton); border-color: var(--ton); color: #fff; }
+  .deposit-amount-btn:active { transform: scale(0.95); }
+  .deposit-input-wrap { position: relative; margin-bottom: 16px; }
+  .deposit-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 12px; padding: 14px 50px 14px 16px;
+    font-size: 18px; font-weight: 700; color: var(--text);
+    font-family: 'Geist Mono', monospace; outline: none;
+  }
+  .deposit-input:focus { border-color: var(--ton); }
+  .deposit-input-suffix { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--ton); font-weight: 700; font-size: 14px; }
+  .deposit-comment-box {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .deposit-comment-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .deposit-comment-val { font-family: 'Geist Mono', monospace; font-size: 16px; font-weight: 700; color: var(--yes); letter-spacing: 0.1em; }
+  .deposit-confirm-btn {
+    background: linear-gradient(135deg, var(--ton), #006ab5);
+    border: none; border-radius: 14px; padding: 16px;
+    font-family: 'Geist', sans-serif; font-size: 16px; font-weight: 700;
+    color: #fff; width: 100%; cursor: pointer; transition: all 0.2s;
+  }
+  .deposit-confirm-btn:active { transform: scale(0.97); }
+  .deposit-confirm-btn:disabled { opacity: 0.5; }
+  .pending-deposit-card {
+    background: var(--surface2); border: 1px solid rgba(0,152,234,0.2);
+    border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .pending-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ton); animation: pulse 1.5s infinite; flex-shrink: 0; }
+
+  /* ── TONCONNECT BUTTON ── */
+  .ton-connect-btn {
+    background: linear-gradient(135deg, #0098ea, #006ab5);
+    border: none; border-radius: 12px;
+    padding: 8px 14px; display: flex; align-items: center; gap: 7px;
+    cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+  }
+  .ton-connect-btn:active { transform: scale(0.95); opacity: 0.9; }
+  .ton-connect-btn .tc-icon { font-size: 16px; }
+  .ton-connect-btn .tc-text { font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; font-family: 'Geist', sans-serif; }
+  .ton-connect-btn.connected { background: var(--surface2); border: 1px solid rgba(0,152,234,0.3); }
+  .ton-connect-btn.connected .tc-text { color: var(--ton); }
+
+  /* ── ONLINE COUNTER ── */
+  .online-badge {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 99px; padding: 5px 10px;
+    font-size: 11px; font-weight: 600; color: var(--yes);
+  }
+  .online-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--yes); animation: pulse 1.5s infinite; flex-shrink:0; }
+
+  /* ── LIVE FEED ── */
+  .live-feed-wrap { padding: 0 16px 12px; }
+  .live-feed-title { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .live-feed-scroll { display: flex; flex-direction: column; gap: 6px; }
+  .live-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 12px;
+    display: flex; align-items: center; gap: 10px;
+    animation: slideInFeed 0.4s cubic-bezier(0.4,0,0.2,1);
+  }
+  @keyframes slideInFeed {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .live-item-avatar { width: 28px; height: 28px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .live-item-body { flex: 1; min-width: 0; }
+  .live-item-user { font-size: 12px; font-weight: 600; color: var(--text); }
+  .live-item-action { font-size: 11px; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .live-item-amount { font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .live-item-amount.yes { color: var(--yes); }
+  .live-item-amount.no  { color: var(--no); }
+  .live-item-time { font-size: 10px; color: var(--muted); flex-shrink: 0; }
+
+  /* ── WALLET SCREEN ── */
+  .wallet-connect-card {
+    background: linear-gradient(135deg, #001f3d, #003366);
+    border: 1px solid rgba(0,152,234,0.25); border-radius: 20px;
+    padding: 28px 24px; text-align: center; margin: 0 16px 16px;
+  }
+  .wallet-icon-big { font-size: 48px; margin-bottom: 16px; }
+  .wallet-connect-title { font-family: 'Clash Display', sans-serif; font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .wallet-connect-sub { font-size: 13px; color: var(--muted2, #8892a4); line-height: 1.6; margin-bottom: 24px; }
+  .wallet-options { display: flex; flex-direction: column; gap: 10px; }
+  .wallet-option {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 14px; padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px;
+    cursor: pointer; transition: all 0.2s; text-align: left;
+  }
+  .wallet-option:active { transform: scale(0.98); border-color: var(--ton); }
+  .wallet-option-icon { font-size: 28px; flex-shrink: 0; }
+  .wallet-option-name { font-size: 15px; font-weight: 700; }
+  .wallet-option-sub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .wallet-option-arrow { margin-left: auto; color: var(--muted); font-size: 18px; }
+  .wallet-connected-card {
+    background: linear-gradient(135deg, #001f3d, #003366);
+    border: 1px solid rgba(0,152,234,0.25); border-radius: 20px;
+    padding: 20px 22px; margin: 0 16px 16px;
+  }
+  .wallet-addr { font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--ton); margin-top: 6px; }
+  .wallet-disconnect { background: rgba(255,77,106,0.1); border: 1px solid rgba(255,77,106,0.2); color: var(--no); border-radius: 10px; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 14px; font-family: 'Geist', sans-serif; transition: all 0.15s; }
+  .wallet-disconnect:active { opacity: 0.8; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .stagger > * { animation: fadeIn 0.4s ease both; }
+  .stagger > *:nth-child(1) { animation-delay: 0.05s; }
+  .stagger > *:nth-child(2) { animation-delay: 0.10s; }
+  .stagger > *:nth-child(3) { animation-delay: 0.15s; }
+  .stagger > *:nth-child(4) { animation-delay: 0.20s; }
+  .stagger > *:nth-child(5) { animation-delay: 0.25s; }
+
+  @keyframes flashGreen { 0%,100% { background: transparent; } 50% { background: rgba(0,229,160,0.15); } }
+  .flash { animation: flashGreen 0.6s ease; }
+
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--yes); box-shadow: 0 0 6px var(--yes); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.6; } }
+
+  /* ══ LANGUAGE SCREEN ══ */
+  #screen-lang {
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    z-index: 200;
+  }
+  .lang-logo {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 42px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+    letter-spacing: -1px;
+  }
+  .lang-logo span { color: var(--accent); }
+  .lang-tagline {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 52px;
+    text-align: center;
+  }
+  .lang-prompt {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .lang-options { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
+  .lang-btn {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 18px;
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .lang-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent-dim), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .lang-btn:hover::before, .lang-btn:active::before { opacity: 1; }
+  .lang-btn:active { transform: scale(0.97); border-color: var(--accent); }
+  .lang-flag { font-size: 32px; line-height: 1; flex-shrink: 0; }
+  .lang-text { flex: 1; }
+  .lang-name { font-family: 'Clash Display', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); }
+  .lang-native { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .lang-arrow { color: var(--muted); font-size: 18px; }
+
+  /* splash animation */
+  #screen-lang .lang-logo { animation: splashLogo 0.7s cubic-bezier(0.34,1.56,0.64,1) both; }
+  #screen-lang .lang-tagline { animation: fadeIn 0.5s 0.3s ease both; }
+  #screen-lang .lang-prompt { animation: fadeIn 0.5s 0.5s ease both; }
+  #screen-lang .lang-options { animation: fadeIn 0.5s 0.6s ease both; }
+  @keyframes splashLogo {
+    from { transform: scale(0.5) translateY(20px); opacity: 0; }
+    to   { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  /* globe decoration */
+  .lang-globe {
+    width: 80px; height: 80px;
+    background: radial-gradient(circle at 35% 35%, rgba(91,138,240,0.3), rgba(91,138,240,0.05));
+    border: 1px solid rgba(91,138,240,0.2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+    margin-bottom: 24px;
+    animation: splashLogo 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+    box-shadow: 0 0 40px rgba(91,138,240,0.15);
+  }
+
+  /* lang switcher in header */
+  .lang-switcher {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .lang-switcher:active { background: var(--surface2); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ SCREEN: LANGUAGE SELECT ══ -->
+  <div class="screen" id="screen-lang">
+    <div class="lang-globe">🌐</div>
+    <div class="lang-logo">Event<span>on</span></div>
+    <div class="lang-tagline">Prediction markets · TON blockchain</div>
+    <div class="lang-prompt" id="lang-prompt">Choose your language</div>
+    <div class="lang-options">
+      <div class="lang-btn" onclick="selectLang('uk')">
+        <div class="lang-flag">🇺🇦</div>
+        <div class="lang-text">
+          <div class="lang-name">Українська</div>
+          <div class="lang-native">Ukrainian</div>
+        </div>
+        <div class="lang-arrow">›</div>
+      </div>
+      <div class="lang-btn" onclick="selectLang('ru')">
+        <div class="lang-flag">🇷🇺</div>
+        <div class="lang-text">
+          <div class="lang-name">Русский</div>
+          <div class="lang-native">Russian</div>
+        </div>
+        <div class="lang-arrow">›</div>
+      </div>
+      <div class="lang-btn" onclick="selectLang('en')">
+        <div class="lang-flag">🇬🇧</div>
+        <div class="lang-text">
+          <div class="lang-name">English</div>
+          <div class="lang-native">English</div>
+        </div>
+        <div class="lang-arrow">›</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: HOME ══ -->
+  <div class="screen hidden" id="screen-home">
+    <div style="padding: 16px 16px 0; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;" id="home-greeting"></div>
+        <div style="font-family:'Clash Display',sans-serif;font-size:22px;font-weight:700;">Event<span style="color:var(--accent)">on</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px;">
+        <div class="online-badge"><div class="online-dot"></div><span id="online-count">...</span></div>
+        <button class="ton-connect-btn" id="tc-btn" onclick="openWalletScreen()">
+          <span class="tc-icon">💎</span>
+          <span class="tc-text" id="tc-btn-text">Connect</span>
+        </button>
+        <div class="lang-switcher" id="lang-flag-btn" onclick="showLangScreen()"></div>
+      </div>
+    </div>
+
+    <div class="scroll-body">
+      <div class="hero" style="padding-top:14px;">
+        <div class="hero-inner">
+          <div class="hero-label" id="hero-label"></div>
+          <div class="hero-value">48 290 <span style="font-size:20px;color:var(--ton)">TON</span></div>
+          <div class="hero-sub" id="hero-sub"></div>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <div class="hero-stat-val">142</div>
+              <div class="hero-stat-lbl" id="stat-markets"></div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-val" style="color:var(--accent)">8 420</div>
+              <div class="hero-stat-lbl" id="stat-users"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="live-feed-wrap" id="live-feed-wrap">
+        <div class="live-feed-title">
+          <div class="online-dot"></div>
+          <span id="live-feed-label">Live bets</span>
+        </div>
+        <div class="live-feed-scroll" id="live-feed-list"></div>
+      </div>
+      <div class="tabs" id="category-tabs"></div>
+      <div class="feed stagger" id="market-feed"></div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-item active"><div class="nav-icon">🔮</div><div class="nav-label" id="nav-markets"></div></div>
+      <div class="nav-item" onclick="showScreen('bet')"><div class="nav-icon">⚽</div><div class="nav-label" id="nav-bet"></div></div>
+      <div class="nav-item" onclick="showScreen('portfolio')"><div class="nav-icon">💼</div><div class="nav-label" id="nav-portfolio"></div></div>
+      <div class="nav-item" onclick="showScreen('leaderboard')"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-rating"></div></div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: MARKET DETAIL ══ -->
+  <div class="screen hidden" id="screen-detail">
+    <div class="header">
+      <div class="header-back" onclick="goBack()">←</div>
+      <div class="header-title" id="detail-header-title"></div>
+      <div class="header-right"><div class="live-dot"></div></div>
+    </div>
+    <div class="scroll-body">
+      <div class="detail-hero">
+        <div class="detail-hero-inner fade-in">
+          <div class="detail-emoji-big" id="d-emoji"></div>
+          <div class="detail-cat" id="d-cat"></div>
+          <div class="detail-title" id="d-title"></div>
+          <div class="detail-prob-row">
+            <div class="prob-badge yes" id="d-yes-prob"></div>
+            <div class="prob-label" id="d-yes-label"></div>
+            <div class="prob-badge no" id="d-no-prob"></div>
+            <div class="prob-label" id="d-no-label"></div>
+          </div>
+          <div class="detail-bar"><div class="detail-bar-fill" id="d-bar"></div></div>
+          <div class="detail-stats">
+            <div class="detail-stat"><div class="detail-stat-val" id="d-vol"></div><div class="detail-stat-lbl" id="d-vol-lbl"></div></div>
+            <div class="detail-stat"><div class="detail-stat-val" id="d-trades"></div><div class="detail-stat-lbl" id="d-trades-lbl"></div></div>
+            <div class="detail-stat"><div class="detail-stat-val" id="d-deadline"></div><div class="detail-stat-lbl" id="d-deadline-lbl"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-section">
+        <div class="section-title" id="chart-title"></div>
+        <div class="chart-wrap"><canvas id="price-chart" class="chart"></canvas></div>
+      </div>
+
+      <div class="bet-section">
+        <div class="section-title" id="bet-title"></div>
+        <div class="bet-choice">
+          <div class="bet-btn yes" id="btn-yes" onclick="selectSide('yes')"></div>
+          <div class="bet-btn no" id="btn-no" onclick="selectSide('no')"></div>
+        </div>
+        <div class="amount-input">
+          <input type="number" id="amount-input" placeholder="0.0" min="0.5" inputmode="decimal" pattern="[0-9]*" oninput="updatePreview()" />
+          <div class="amount-currency">◈ TON</div>
+        </div>
+        <div class="quick-amounts">
+          <div class="quick-btn" onclick="setAmount(1)">1</div>
+          <div class="quick-btn" onclick="setAmount(5)">5</div>
+          <div class="quick-btn" onclick="setAmount(10)">10</div>
+          <div class="quick-btn" onclick="setAmount(50)">50</div>
+        </div>
+        <div class="bet-preview">
+          <div class="bet-preview-row"><span class="bet-preview-label" id="prev-lbl-stake"></span><span class="bet-preview-val" id="prev-amount">— TON</span></div>
+          <div class="bet-preview-row"><span class="bet-preview-label" id="prev-lbl-win"></span><span class="bet-preview-val yes" id="prev-win">— TON</span></div>
+          <div class="bet-preview-row"><span class="bet-preview-label" id="prev-lbl-profit"></span><span class="bet-preview-val yes" id="prev-profit">—</span></div>
+          <div class="bet-preview-row"><span class="bet-preview-label" id="prev-lbl-fee"></span><span class="bet-preview-val" id="prev-fee">—</span></div>
+        </div>
+        <button class="cta-btn" id="place-bet-btn" onclick="placeBet()" disabled></button>
+      </div>
+      <div style="height:24px;"></div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: PORTFOLIO ══ -->
+  <div class="screen hidden" id="screen-portfolio">
+    <div class="header">
+      <div class="header-back" onclick="goBack()">←</div>
+      <div class="header-title" id="portfolio-title"></div>
+    </div>
+    <div class="scroll-body">
+      <div class="portfolio-header">
+        <div class="balance-card fade-in">
+          <div class="balance-label" id="balance-label"></div>
+          <div class="balance-amount" id="portfolio-balance">245.8 <span style="font-size:20px;color:var(--ton)">◈</span></div>
+          <div id="balance-usd" style="font-size:17px;font-weight:700;color:var(--yes);margin-top:4px;">≈ <span id="balance-usd-val">загрузка...</span></div>
+          <div class="balance-sub" id="balance-sub"></div>
+          <div class="balance-pnl">
+            <span class="pnl-positive" id="pnl-amount">+0 TON</span>
+            <span class="pnl-label" id="pnl-label"></span>
+          </div>
+          <button class="deposit-btn" onclick="openDepositModal()">
+            💎 <span id="deposit-btn-label">Пополнить баланс</span>
+          </button>
+          <button class="deposit-btn" onclick="openProposeModal()" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);margin-top:8px;">
+            💡 <span id="propose-btn-label">Предложить рынок</span>
+          </button>
+        </div>
+      </div>
+      <!-- Creator earnings card -->
+      <div id="creator-card" style="display:none;margin:0 16px 12px;">
+        <div style="background:linear-gradient(135deg,#1a0a2e,#2d1458);border:1px solid rgba(124,58,237,0.3);border-radius:16px;padding:14px 16px;">
+          <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#a78bfa;margin-bottom:6px;" id="creator-label">МОИ РЫНКИ</div>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div>
+              <div style="font-family:'Clash Display',sans-serif;font-size:22px;font-weight:700;" id="creator-earnings">0 TON</div>
+              <div style="font-size:11px;color:var(--muted);" id="creator-earnings-label">заработано как создатель</div>
+            </div>
+            <div style="margin-left:auto;text-align:right;">
+              <div style="font-size:20px;font-weight:700;color:#a78bfa;" id="creator-markets-count">0</div>
+              <div style="font-size:11px;color:var(--muted);">рынков создано</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 16px 10px;"><div class="section-title" id="positions-title"></div></div>
+      <div class="positions-list stagger" id="positions-list"></div>
+      <div style="height:24px;"></div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="showScreen('home')"><div class="nav-icon">🔮</div><div class="nav-label" id="nav-markets2"></div></div>
+      <div class="nav-item" onclick="showScreen('bet')"><div class="nav-icon">⚽</div><div class="nav-label" id="nav-bet2"></div></div>
+      <div class="nav-item active"><div class="nav-icon">💼</div><div class="nav-label" id="nav-portfolio2"></div></div>
+      <div class="nav-item" onclick="showScreen('leaderboard')"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-rating2"></div></div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: BET ══ -->
+  <div class="screen hidden" id="screen-bet">
+    <div class="header">
+      <div class="header-title" id="bet-screen-title">⚽ Ставки</div>
+    </div>
+    <div style="display:flex;gap:8px;padding:8px 12px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <button onclick="filterBetSport('all',this)" class="filter-btn active" style="white-space:nowrap;">🔥 Все</button>
+      <button onclick="filterBetSport('PL',this)" class="filter-btn" style="white-space:nowrap;">🏴󠁧󠁢󠁥󠁮󠁧󠁿 АПЛ</button>
+      <button onclick="filterBetSport('PD',this)" class="filter-btn" style="white-space:nowrap;">🇪🇸 Ла Лига</button>
+      <button onclick="filterBetSport('CL',this)" class="filter-btn" style="white-space:nowrap;">⭐ ЛЧ</button>
+      <button onclick="filterBetSport('SA',this)" class="filter-btn" style="white-space:nowrap;">🇮🇹 Серия А</button>
+      <button onclick="filterBetSport('BL1',this)" class="filter-btn" style="white-space:nowrap;">🇩🇪 Бундеслига</button>
+      <button onclick="filterBetSport('NBA',this)" class="filter-btn" style="white-space:nowrap;">🏀 НБА</button>
+      <button onclick="filterBetSport('F1',this)" class="filter-btn" style="white-space:nowrap;">🏎 F1</button>
+    </div>
+    <div class="scroll-body" id="bet-scroll">
+      <div id="bet-matches-list" style="padding-top:8px;padding-bottom:80px;"></div>
+      <div style="height:20px;"></div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="showScreen('home')"><div class="nav-icon">🔮</div><div class="nav-label" id="nav-markets-bet"></div></div>
+      <div class="nav-item active"><div class="nav-icon">⚽</div><div class="nav-label" id="nav-bet-active"></div></div>
+      <div class="nav-item" onclick="showScreen('portfolio')"><div class="nav-icon">💼</div><div class="nav-label" id="nav-portfolio-bet"></div></div>
+      <div class="nav-item" onclick="showScreen('leaderboard')"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-rating-bet"></div></div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: LEADERBOARD ══ -->
+  <div class="screen hidden" id="screen-leaderboard">
+    <div class="header">
+      <div class="header-back" onclick="goBack()">←</div>
+      <div class="header-title" id="lb-header-title"></div>
+    </div>
+    <div class="scroll-body">
+      <div style="padding:0 16px 14px;">
+        <div class="balance-card" style="background:linear-gradient(135deg,#1a1200,#1f1600);border-color:rgba(245,200,66,0.2);">
+          <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;" id="lb-your-pos"></div>
+          <div style="font-family:'Clash Display',sans-serif;font-size:28px;font-weight:700;">#47 <span style="font-size:16px;color:var(--muted)" id="lb-of-total"></span></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;" id="lb-your-stats"></div>
+        </div>
+      </div>
+      <div style="padding:0 16px 10px;"><div class="section-title" id="lb-top-title"></div></div>
+      <div class="lb-list stagger" id="lb-list"></div>
+      <div style="height:24px;"></div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="showScreen('home')"><div class="nav-icon">🔮</div><div class="nav-label" id="nav-markets3"></div></div>
+      <div class="nav-item" onclick="showScreen('bet')"><div class="nav-icon">⚽</div><div class="nav-label" id="nav-bet3"></div></div>
+      <div class="nav-item" onclick="showScreen('portfolio')"><div class="nav-icon">💼</div><div class="nav-label" id="nav-portfolio3"></div></div>
+      <div class="nav-item active"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-rating3"></div></div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: WALLET ══ -->
+  <div class="screen hidden" id="screen-wallet">
+    <div class="header">
+      <div class="header-back" onclick="goBack()">←</div>
+      <div class="header-title" id="wallet-header-title">Wallet</div>
+    </div>
+    <div class="scroll-body">
+      <div id="wallet-content"></div>
+    </div>
+  </div>
+
+  <!-- ══ SUCCESS OVERLAY ══ -->
+  <div class="overlay" id="success-overlay">
+    <div class="overlay-card">
+      <div class="overlay-icon">🎯</div>
+      <div class="overlay-title" id="overlay-title"></div>
+      <div class="overlay-sub" id="overlay-sub"></div>
+      <div class="overlay-detail" id="overlay-detail"></div>
+      <button class="cta-btn" onclick="closeOverlay()" id="overlay-ok-btn"></button>
+    </div>
+  </div>
+
+  <!-- ══ PROPOSE MARKET MODAL ══ -->
+  <div class="modal-overlay hidden" id="propose-modal" onclick="closeProposeModal(event)">
+    <div class="modal-sheet" style="max-height:85vh;overflow-y:auto;">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="propose-title">💡 Предложить рынок</div>
+      <div class="modal-sub" id="propose-sub">Если рынок опубликуют — вы будете получать 0.5% с каждой ставки.</div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;" id="propose-question-label">ВОПРОС</div>
+        <textarea id="propose-title-input" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:12px 14px;font-size:15px;color:var(--text);font-family:'Geist',sans-serif;resize:none;height:80px;outline:none;" placeholder="Например: Месси сыграет на ЧМ-2026?"></textarea>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div>
+          <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;" id="propose-cat-label">КАТЕГОРИЯ</div>
+          <select id="propose-cat" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--text);font-family:'Geist',sans-serif;outline:none;">
+            <option value="politics">🗳 Политика</option>
+            <option value="crypto">₿ Крипто</option>
+            <option value="sport">⚽ Спорт</option>
+            <option value="culture">🎬 Культура</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;" id="propose-prob-label">ВЕРОЯТНОСТЬ YES %</div>
+          <input id="propose-prob" type="number" min="5" max="95" value="50" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--text);font-family:'Geist Mono',monospace;outline:none;" />
+        </div>
+      </div>
+
+      <div style="background:var(--surface2);border:1px solid rgba(124,58,237,0.25);border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+        <div style="font-size:20px;">💎</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5;" id="propose-reward-text">Вы получите <span style="color:#a78bfa;font-weight:700;">0.5%</span> с каждой ставки на ваш рынок автоматически.</div>
+      </div>
+
+      <button onclick="submitProposal()" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;border-radius:14px;padding:16px;font-family:'Geist',sans-serif;font-size:16px;font-weight:700;color:#fff;width:100%;cursor:pointer;" id="propose-submit-btn">
+        <span id="propose-submit-label">Отправить предложение</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ MY PROPOSALS LIST ══ -->
+  <div class="modal-overlay hidden" id="my-proposals-modal" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="my-proposals-title">Мои рынки</div>
+      <div id="my-proposals-list" style="margin-top:8px;"></div>
+      <button onclick="document.getElementById('my-proposals-modal').classList.add('hidden')" style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px;width:100%;font-family:'Geist',sans-serif;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;margin-top:12px;">Закрыть</button>
+    </div>
+  </div>
+
+
+  <!-- ══ DEPOSIT MODAL ══ -->
+  <div class="modal-overlay hidden" id="deposit-modal" onclick="closeDepositModal(event)">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="deposit-modal-title">💎 Пополнить баланс</div>
+      <div class="modal-sub" id="deposit-modal-sub">Выберите сумму и переведите TON через свой кошелёк. Укажите код в комментарии — это обязательно!</div>
+      <div class="deposit-amounts" id="deposit-amounts-grid"></div>
+      <div class="deposit-input-wrap">
+        <input class="deposit-input" type="number" id="deposit-amount-input" inputmode="decimal" placeholder="0.0" oninput="onDepositAmountInput()" />
+        <div class="deposit-input-suffix">TON</div>
+      </div>
+      <div class="deposit-comment-box">
+        <div>
+          <div class="deposit-comment-label" id="deposit-comment-label">Ваш код (обязательно!)</div>
+          <div class="deposit-comment-val" id="deposit-comment-val">EVT-0000</div>
+        </div>
+        <button onclick="copyDepositComment()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:'Geist',sans-serif;">Копировать</button>
+      </div>
+      <button class="deposit-confirm-btn" id="deposit-confirm-btn" onclick="confirmDeposit()">
+        <span id="deposit-confirm-label">Открыть кошелёк</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ PENDING DEPOSITS ══ -->
+  <div class="modal-overlay hidden" id="pending-modal" onclick="closePendingModal(event)">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">⏳ Ожидание перевода</div>
+      <div class="modal-sub" id="pending-modal-sub">Переведите TON с комментарием. Как только мы получим перевод — баланс обновится автоматически.</div>
+      <div id="pending-deposit-info"></div>
+      <button onclick="closePendingModal()" style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px;width:100%;font-family:'Geist',sans-serif;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;margin-top:8px;">Закрыть</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── MARKETS DATA (топ события по мотивам Polymarket, март 2026) ───
+const ALL_MARKETS = [
+  // ── ПОЛИТИКА ──
+  { id:1,  emoji:'🇺🇸', cat:'politics', yes:72, vol:8420000, trades:94200, deadline:'296', title_ru:'Республиканцы выиграют промежуточные выборы в Конгресс 2026?', title_uk:'Республіканці виграють проміжні вибори до Конгресу 2026?', title_en:'Will Republicans win the 2026 midterm elections?' },
+  { id:2,  emoji:'🗳', cat:'politics', yes:61, vol:5100000, trades:67300, deadline:'180', title_ru:'Трамп останется президентом до конца срока в 2029?', title_uk:'Трамп залишиться президентом до кінця терміну у 2029?', title_en:'Will Trump serve his full term until 2029?' },
+  { id:3,  emoji:'🌍', cat:'politics', yes:44, vol:3800000, trades:52100, deadline:'90', title_ru:'Иран и США заключат ядерную сделку в 2026?', title_uk:'Іран і США укладуть ядерну угоду у 2026?', title_en:'Will Iran and the US reach a nuclear deal in 2026?' },
+  { id:4,  emoji:'🏛', cat:'politics', yes:38, vol:2900000, trades:41800, deadline:'120', title_ru:'Демократы выдвинут нового лидера партии до июня 2026?', title_uk:'Демократи висунуть нового лідера партії до червня 2026?', title_en:'Will Democrats pick a new party leader by June 2026?' },
+  { id:5,  emoji:'🇺🇦', cat:'politics', yes:55, vol:6200000, trades:88400, deadline:'60', title_ru:'Перемирие на Украине будет подписано до июня 2026?', title_uk:'Перемир\'я в Україні буде підписано до червня 2026?', title_en:'Will a Ukraine ceasefire be signed before June 2026?' },
+  { id:6,  emoji:'🇷🇺', cat:'politics', yes:29, vol:4100000, trades:58700, deadline:'295', title_ru:'Путин уйдёт с поста президента России в 2026?', title_uk:'Путін піде з посади президента Росії у 2026?', title_en:'Will Putin leave the Russian presidency in 2026?' },
+  { id:7,  emoji:'🇮🇱', cat:'politics', yes:48, vol:3300000, trades:49200, deadline:'45', title_ru:'Израиль и Иран заключат прямые переговоры в 2026?', title_uk:'Ізраїль та Іран розпочнуть прямі переговори у 2026?', title_en:'Will Israel and Iran hold direct talks in 2026?' },
+  { id:8,  emoji:'🗺', cat:'politics', yes:33, vol:1800000, trades:28600, deadline:'200', title_ru:'Северная Корея проведёт ядерное испытание в 2026?', title_uk:'Північна Корея проведе ядерне випробування у 2026?', title_en:'Will North Korea conduct a nuclear test in 2026?' },
+  { id:9,  emoji:'🇨🇳', cat:'politics', yes:22, vol:2700000, trades:39100, deadline:'296', title_ru:'Китай введёт войска на Тайвань до конца 2026?', title_uk:'Китай введе війська на Тайвань до кінця 2026?', title_en:'Will China invade Taiwan by end of 2026?' },
+  { id:10, emoji:'📜', cat:'politics', yes:67, vol:1500000, trades:22400, deadline:'85', title_ru:'США введут новые тарифы против ЕС в 2026?', title_uk:'США введуть нові тарифи проти ЄС у 2026?', title_en:'Will the US impose new tariffs on the EU in 2026?' },
+  { id:11, emoji:'🏛', cat:'politics', yes:71, vol:980000, trades:14700, deadline:'120', title_ru:'Колумбия изменит конституцию при Петро в 2026?', title_uk:'Колумбія змінить конституцію за Петро у 2026?', title_en:'Will Colombia hold a constitutional referendum in 2026?' },
+  { id:12, emoji:'🌍', cat:'politics', yes:58, vol:1200000, trades:18300, deadline:'55', title_ru:'ООН примет резолюцию о прекращении огня на Ближнем Востоке?', title_uk:'ООН ухвалить резолюцію про припинення вогню на Близькому Сході?', title_en:'Will the UN pass a Middle East ceasefire resolution?' },
+
+  // ── КРИПТО ──
+  { id:13, emoji:'₿', cat:'crypto', yes:64, vol:12400000, trades:182000, deadline:'296', title_ru:'Bitcoin достигнет $150 000 до конца 2026?', title_uk:'Bitcoin досягне $150 000 до кінця 2026?', title_en:'Will Bitcoin reach $150,000 by end of 2026?' },
+  { id:14, emoji:'📈', cat:'crypto', yes:49, vol:9800000, trades:143000, deadline:'120', title_ru:'Ethereum превысит $5 000 до июля 2026?', title_uk:'Ethereum перевищить $5 000 до липня 2026?', title_en:'Will Ethereum exceed $5,000 by July 2026?' },
+  { id:15, emoji:'🚀', cat:'crypto', yes:38, vol:7200000, trades:104000, deadline:'200', title_ru:'Solana войдёт в топ-2 криптовалют по капитализации?', title_uk:'Solana увійде в топ-2 криптовалют за капіталізацією?', title_en:'Will Solana enter the top 2 cryptos by market cap?' },
+  { id:16, emoji:'💎', cat:'crypto', yes:77, vol:5600000, trades:81000, deadline:'296', title_ru:'SEC одобрит спотовый ETF на Solana до конца 2026?', title_uk:'SEC схвалить спотовий ETF на Solana до кінця 2026?', title_en:'Will SEC approve a spot Solana ETF by end of 2026?' },
+  { id:17, emoji:'⚡', cat:'crypto', yes:55, vol:4300000, trades:62000, deadline:'60', title_ru:'TON войдёт в топ-5 по капитализации к июню 2026?', title_uk:'TON увійде в топ-5 за капіталізацією до червня 2026?', title_en:'Will TON enter the top 5 cryptos by June 2026?' },
+  { id:18, emoji:'🔮', cat:'crypto', yes:42, vol:3800000, trades:55000, deadline:'150', title_ru:'Binance получит полную лицензию в США в 2026?', title_uk:'Binance отримає повну ліцензію у США у 2026?', title_en:'Will Binance get a full US license in 2026?' },
+  { id:19, emoji:'📊', cat:'crypto', yes:68, vol:3100000, trades:44000, deadline:'296', title_ru:'Крипто-рынок достигнет общей капитализации $5 трлн в 2026?', title_uk:'Крипто-ринок досягне загальної капіталізації $5 трлн у 2026?', title_en:'Will total crypto market cap reach $5T in 2026?' },
+  { id:20, emoji:'₿', cat:'crypto', yes:31, vol:2700000, trades:39000, deadline:'296', title_ru:'MicroStrategy купит ещё 100 000 BTC в 2026?', title_uk:'MicroStrategy купить ще 100 000 BTC у 2026?', title_en:'Will MicroStrategy buy another 100K BTC in 2026?' },
+  { id:21, emoji:'💰', cat:'crypto', yes:59, vol:2200000, trades:32000, deadline:'90', title_ru:'Fed снизит ставку трижды до конца 2026?', title_uk:'ФРС знизить ставку тричі до кінця 2026?', title_en:'Will the Fed cut rates 3 times by end of 2026?' },
+  { id:22, emoji:'🚀', cat:'crypto', yes:44, vol:1900000, trades:27000, deadline:'45', title_ru:'XRP достигнет $5 до мая 2026?', title_uk:'XRP досягне $5 до травня 2026?', title_en:'Will XRP reach $5 by May 2026?' },
+  { id:23, emoji:'⚡', cat:'crypto', yes:72, vol:1600000, trades:23000, deadline:'120', title_ru:'Конгресс США примет закон о крипторегулировании в 2026?', title_uk:'Конгрес США прийме закон про криптовалюти у 2026?', title_en:'Will the US Congress pass crypto legislation in 2026?' },
+  { id:24, emoji:'📉', cat:'crypto', yes:27, vol:1400000, trades:20000, deadline:'60', title_ru:'Bitcoin упадёт ниже $70 000 в 2026?', title_uk:'Bitcoin впаде нижче $70 000 у 2026?', title_en:'Will Bitcoin drop below $70,000 in 2026?' },
+
+  // ── СПОРТ ──
+  { id:25, emoji:'⚽', cat:'sport', yes:34, vol:4800000, trades:71000, deadline:'82', title_ru:'Реал Мадрид выиграет Лигу чемпионов 2025/26?', title_uk:'Реал Мадрид виграє Лігу чемпіонів 2025/26?', title_en:'Will Real Madrid win the Champions League 2025/26?' },
+  { id:26, emoji:'⚽', cat:'sport', yes:28, vol:3900000, trades:58000, deadline:'82', title_ru:'Манчестер Сити выиграет АПЛ сезона 2025/26?', title_uk:'Манчестер Сіті виграє АПЛ сезону 2025/26?', title_en:'Will Manchester City win the 2025/26 Premier League?' },
+  { id:27, emoji:'🏀', cat:'sport', yes:41, vol:3200000, trades:48000, deadline:'110', title_ru:'Бостон Селтикс выиграют НБА чемпионат 2026?', title_uk:'Бостон Селтікс виграють чемпіонат НБА 2026?', title_en:'Will the Boston Celtics win the 2026 NBA Championship?' },
+  { id:28, emoji:'🎾', cat:'sport', yes:55, vol:2100000, trades:31000, deadline:'60', title_ru:'Новак Джокович выиграет French Open 2026?', title_uk:'Новак Джокович виграє French Open 2026?', title_en:'Will Novak Djokovic win French Open 2026?' },
+  { id:29, emoji:'🏎', cat:'sport', yes:62, vol:2800000, trades:42000, deadline:'296', title_ru:'Макс Ферстаппен выиграет чемпионат F1 2026?', title_uk:'Макс Ферстаппен виграє чемпіонат F1 2026?', title_en:'Will Max Verstappen win the 2026 F1 Championship?' },
+  { id:30, emoji:'🥊', cat:'sport', yes:58, vol:1800000, trades:27000, deadline:'30', title_ru:'Усик победит в следующем бою за звание чемпиона?', title_uk:'Усик переможе у наступному бою за звання чемпіона?', title_en:'Will Usyk win his next heavyweight championship fight?' },
+  { id:31, emoji:'⚽', cat:'sport', yes:45, vol:2400000, trades:36000, deadline:'82', title_ru:'Барселона выиграет Ла Лигу в сезоне 2025/26?', title_uk:'Барселона виграє Ла Лігу у сезоні 2025/26?', title_en:'Will Barcelona win La Liga in 2025/26?' },
+  { id:32, emoji:'🏈', cat:'sport', yes:35, vol:3600000, trades:54000, deadline:'330', title_ru:'Канзас Сити Чифс выиграют Супербоул 2027?', title_uk:'Канзас-Сіті Чіфс виграють Супербоул 2027?', title_en:'Will the Kansas City Chiefs win Super Bowl 2027?' },
+  { id:33, emoji:'🏀', cat:'sport', yes:67, vol:1500000, trades:22000, deadline:'90', title_ru:'Леброн Джеймс объявит об уходе из НБА в 2026?', title_uk:'ЛеБрон Джеймс оголосить про завершення кар\'єри у 2026?', title_en:'Will LeBron James retire from the NBA in 2026?' },
+  { id:34, emoji:'⛳', cat:'sport', yes:22, vol:980000, trades:14000, deadline:'40', title_ru:'Тайгер Вудс сыграет на Masters 2026?', title_uk:'Тайгер Вудс зіграє на Masters 2026?', title_en:'Will Tiger Woods play in the 2026 Masters?' },
+  { id:35, emoji:'⚽', cat:'sport', yes:78, vol:1200000, trades:18000, deadline:'120', title_ru:'Лионель Месси сыграет на ЧМ-2026?', title_uk:'Ліонель Мессі зіграє на ЧС-2026?', title_en:'Will Lionel Messi play at the 2026 World Cup?' },
+  { id:36, emoji:'🏆', cat:'sport', yes:51, vol:890000, trades:13000, deadline:'105', title_ru:'Сборная Бразилии выиграет ЧМ по футболу 2026?', title_uk:'Збірна Бразилії виграє ЧС з футболу 2026?', title_en:'Will Brazil win the 2026 FIFA World Cup?' },
+
+  // ── ПОП-КУЛЬТУРА ──
+  { id:37, emoji:'🎬', cat:'culture', yes:82, vol:3400000, trades:51000, deadline:'14', title_ru:'Оппенгеймер 2 выйдет в прокат в 2026?', title_uk:'Оппенгеймер 2 вийде в прокат у 2026?', title_en:'Will Oppenheimer 2 be released in 2026?' },
+  { id:38, emoji:'🎵', cat:'culture', yes:44, vol:2100000, trades:31000, deadline:'296', title_ru:'Taylor Swift и Travis Kelce поженятся в 2026?', title_uk:'Taylor Swift і Travis Kelce одружаться у 2026?', title_en:'Will Taylor Swift and Travis Kelce get married in 2026?' },
+  { id:39, emoji:'🎮', cat:'culture', yes:71, vol:4200000, trades:63000, deadline:'180', title_ru:'GTA VI выйдет без переноса в 2026?', title_uk:'GTA VI вийде без перенесення у 2026?', title_en:'Will GTA VI launch in 2026 without delays?' },
+  { id:40, emoji:'🎬', cat:'culture', yes:88, vol:1800000, trades:27000, deadline:'296', title_ru:'Avatar 3 соберёт более $1 млрд в прокате?', title_uk:'Avatar 3 зберe більше $1 млрд у прокаті?', title_en:'Will Avatar 3 gross over $1B at the box office?' },
+  { id:41, emoji:'🌟', cat:'culture', yes:39, vol:1500000, trades:22000, deadline:'14', title_ru:'Оскар 2026: Лучший фильм получит независимая студия?', title_uk:'Оскар 2026: Найкращий фільм отримає незалежна студія?', title_en:'Will an independent studio win Best Picture at Oscars 2026?' },
+  { id:42, emoji:'🎵', cat:'culture', yes:56, vol:1200000, trades:18000, deadline:'296', title_ru:'Kanye West выпустит новый альбом в 2026?', title_uk:'Kanye West випустить новий альбом у 2026?', title_en:'Will Kanye West release a new album in 2026?' },
+  { id:43, emoji:'📺', cat:'culture', yes:74, vol:980000, trades:14000, deadline:'120', title_ru:'Stranger Things Season 5 выйдет в 2026?', title_uk:'Stranger Things Season 5 вийде у 2026?', title_en:'Will Stranger Things Season 5 release in 2026?' },
+  { id:44, emoji:'🎬', cat:'culture', yes:63, vol:870000, trades:13000, deadline:'60', title_ru:'Marvel выпустит более 3 фильмов в 2026?', title_uk:'Marvel випустить більше 3 фільмів у 2026?', title_en:'Will Marvel release more than 3 films in 2026?' },
+  { id:45, emoji:'🌟', cat:'culture', yes:29, vol:760000, trades:11000, deadline:'296', title_ru:'Илон Маск появится на Оскаре 2027 как продюсер?', title_uk:'Ілон Маск з\'явиться на Оскарі 2027 як продюсер?', title_en:'Will Elon Musk appear at the 2027 Oscars as a producer?' },
+
+  // ── АИ / ТЕХНОЛОГИИ ──
+  { id:46, emoji:'🤖', cat:'crypto', yes:68, vol:5800000, trades:87000, deadline:'296', title_ru:'OpenAI выпустит GPT-5 в 2026?', title_uk:'OpenAI випустить GPT-5 у 2026?', title_en:'Will OpenAI release GPT-5 in 2026?' },
+  { id:47, emoji:'🚀', cat:'crypto', yes:77, vol:4100000, trades:62000, deadline:'120', title_ru:'SpaceX долетит до Марса до 2030?', title_uk:'SpaceX долетить до Марсу до 2030?', title_en:'Will SpaceX reach Mars before 2030?' },
+  { id:48, emoji:'💡', cat:'crypto', yes:45, vol:3200000, trades:48000, deadline:'296', title_ru:'Apple выпустит AR-очки в 2026?', title_uk:'Apple випустить AR-окуляри у 2026?', title_en:'Will Apple release AR glasses in 2026?' },
+  { id:49, emoji:'🤖', cat:'crypto', yes:52, vol:2700000, trades:40000, deadline:'180', title_ru:'AI заменит более 10% рабочих мест к 2027?', title_uk:'AI замінить більше 10% робочих місць до 2027?', title_en:'Will AI replace more than 10% of jobs by 2027?' },
+  { id:50, emoji:'🔮', cat:'crypto', yes:61, vol:2100000, trades:31000, deadline:'296', title_ru:'Tesla выпустит Robotaxi до конца 2026?', title_uk:'Tesla випустить Robotaxi до кінця 2026?', title_en:'Will Tesla launch Robotaxi by end of 2026?' },
+];
+
+// Строим MARKET_DATA из ALL_MARKETS
+const MARKET_DATA = {};
+ALL_MARKETS.forEach(m => {
+  const history = [];
+  let val = m.yes + (Math.random()-0.5)*20;
+  for (let i=0; i<8; i++) {
+    val = Math.max(3, Math.min(97, val + (Math.random()-0.5)*6));
+    history.push(Math.round(val));
+  }
+  history[history.length-1] = m.yes;
+  MARKET_DATA[m.id] = {
+    yes: m.yes,
+    vol: m.vol,
+    trades: m.trades,
+    deadline: m.deadline,
+    history,
+  };
+});
+
+
+// ── TRANSLATIONS ──────────────────────────────────────────────────
+const T = {
+  uk: {
+    navMarkets: 'Ринки',
+    navBet: 'Ставки',
+    navPortfolio: 'Портфель',
+    navRating: 'Рейтинг',
+    greeting: 'Ласкаво просимо 👋',
+    heroLabel: 'Загальний обсяг ринків',
+    heroSub: '↑ +12.4% за останні 24 години',
+    statMarkets: 'Активних ринків',
+    statUsers: 'Учасників сьогодні',
+    tabs: ['🔥 Всі', '⚽ Спорт', '🗳 Політика', '₿ Крипто', '🎬 Культура'],
+    tabKeys: ['all','sport','politics','crypto','culture'],
+
+    portfolioTitle: 'Мій портфель',
+    balanceLabel: 'Баланс гаманця',
+    balanceSub: 'Баланс гаманця у TON',
+    pnlLabel: 'прибуток за весь час',
+    positionsTitle: 'Активні позиції',
+    chartTitle: 'ГРАФІК ВІРОГІДНОСТІ YES',
+    betTitle: 'ЗРОБИТИ СТАВКУ',
+    btnYes: '✓ ТАК', btnNo: '✗ НІ',
+    betPlaceholder: 'Виберіть ТАК або НІ',
+    prevStake: 'Ви ставите', prevWin: 'Отримаєте при перемозі', prevProfit: 'Потенційний прибуток', prevFee: 'Комісія (2%)',
+    yesLabel: 'ТАК', noLabel: 'НІ',
+    volLbl: 'Обсяг TON', tradesLbl: 'Угод', deadlineLbl: 'До закриття',
+    betYes: '✓ Поставити ТАК', betNo: '✗ Поставити НІ',
+    overlayTitle: 'Ставку прийнято!',
+    overlaySub: 'Транзакцію підтверджено в мережі TON.',
+    overlayOk: 'Чудово!',
+    overlayEvent: 'Подія', overlayPos: 'Ваша позиція', overlaySpent: 'Витрачено', overlayTokens: 'Куплено токенів', overlayPotential: 'Потенціал',
+    lbHeader: 'Рейтинг трейдерів', lbYourPos: 'ВАША ПОЗИЦІЯ', lbOfTotal: 'з 8 420',
+    lbYourStats: 'Точність: 68% · Прибуток: +38.5 TON',
+    lbTopTitle: 'ТОП ТРЕЙДЕРІВ',
+    langFlag: '🇺🇦',
+    catLabels: { sport:'Спорт', politics:'Політика', crypto:'Крипто', culture:'Поп-культура' },
+    markets: ALL_MARKETS.map(m => ({ id:m.id, emoji:m.emoji, cat:m.cat, title:m.title_uk })),
+    positions: [
+      { emoji:'⚽', title:'Реал Мадрид вийде у фінал ЛЧ 2025?', side:'yes', sideLabel:'ТАК', tokens:14.2, price:0.72, entry:0.64, pnl:'+1.14' },
+      { emoji:'₿', title:'Bitcoin досягне $120k до вересня?', side:'yes', sideLabel:'ТАК', tokens:8.5, price:0.48, entry:0.52, pnl:'-0.34' },
+      { emoji:'🗳', title:'Трамп підпише крипто-закон до липня?', side:'no', sideLabel:'НІ', tokens:22.0, price:0.39, entry:0.41, pnl:'-0.44' },
+    ],
+    posStatLabels: ['Токенів','Пот. ціна','P&L'],
+  },
+  ru: {
+    navMarkets: 'Рынки',
+    navBet: 'Ставки',
+    navPortfolio: 'Портфель',
+    navRating: 'Рейтинг',
+    greeting: 'Добро пожаловать 👋',
+    heroLabel: 'Общий объём рынков',
+    heroSub: '↑ +12.4% за последние 24 часа',
+    statMarkets: 'Активных рынков',
+    statUsers: 'Участников сегодня',
+    tabs: ['🔥 Все', '⚽ Спорт', '🗳 Политика', '₿ Крипто', '🎬 Культура'],
+    tabKeys: ['all','sport','politics','crypto','culture'],
+
+    portfolioTitle: 'Мой портфель',
+    balanceLabel: 'Баланс кошелька',
+    balanceSub: 'Баланс кошелька в TON',
+    pnlLabel: 'прибыль за всё время',
+    positionsTitle: 'Активные позиции',
+    chartTitle: 'ГРАФИК ВЕРОЯТНОСТИ YES',
+    betTitle: 'СДЕЛАТЬ СТАВКУ',
+    btnYes: '✓ ДА', btnNo: '✗ НЕТ',
+    betPlaceholder: 'Выберите ДА или НЕТ',
+    prevStake: 'Вы ставите', prevWin: 'Получите при победе', prevProfit: 'Потенциальная прибыль', prevFee: 'Комиссия (2%)',
+    yesLabel: 'ДА', noLabel: 'НЕТ',
+    volLbl: 'Объём TON', tradesLbl: 'Сделок', deadlineLbl: 'До закрытия',
+    betYes: '✓ Поставить ДА', betNo: '✗ Поставить НЕТ',
+    overlayTitle: 'Ставка принята!',
+    overlaySub: 'Транзакция подтверждена в сети TON.',
+    overlayOk: 'Отлично!',
+    overlayEvent: 'Событие', overlayPos: 'Ваша позиция', overlaySpent: 'Потрачено', overlayTokens: 'Токенов куплено', overlayPotential: 'Потенциал',
+    lbHeader: 'Рейтинг трейдеров', lbYourPos: 'ВАША ПОЗИЦИЯ', lbOfTotal: 'из 8 420',
+    lbYourStats: 'Точность: 68% · Прибыль: +38.5 TON',
+    lbTopTitle: 'ТОП ТРЕЙДЕРОВ',
+    langFlag: '🇷🇺',
+    catLabels: { sport:'Спорт', politics:'Политика', crypto:'Крипто', culture:'Поп-культура' },
+    markets: ALL_MARKETS.map(m => ({ id:m.id, emoji:m.emoji, cat:m.cat, title:m.title_ru })),
+    positions: [
+      { emoji:'⚽', title:'Реал Мадрид выйдет в финал ЛЧ 2025?', side:'yes', sideLabel:'ДА', tokens:14.2, price:0.72, entry:0.64, pnl:'+1.14' },
+      { emoji:'₿', title:'Bitcoin достигнет $120k до сентября?', side:'yes', sideLabel:'ДА', tokens:8.5, price:0.48, entry:0.52, pnl:'-0.34' },
+      { emoji:'🗳', title:'Трамп подпишет крипто-закон до июля?', side:'no', sideLabel:'НЕТ', tokens:22.0, price:0.39, entry:0.41, pnl:'-0.44' },
+    ],
+    posStatLabels: ['Токенов','Тек. цена','P&L'],
+  },
+  en: {
+    navMarkets: 'Markets',
+    navBet: 'Bet',
+    navPortfolio: 'Portfolio',
+    navRating: 'Rating',
+    greeting: 'Welcome 👋',
+    heroLabel: 'Total market volume',
+    heroSub: '↑ +12.4% in the last 24 hours',
+    statMarkets: 'Active markets',
+    statUsers: 'Participants today',
+    tabs: ['🔥 All', '⚽ Sport', '🗳 Politics', '₿ Crypto', '🎬 Culture'],
+    tabKeys: ['all','sport','politics','crypto','culture'],
+
+    portfolioTitle: 'My Portfolio',
+    balanceLabel: 'Wallet balance',
+    balanceSub: 'Wallet balance in TON',
+    pnlLabel: 'all-time profit',
+    positionsTitle: 'Active positions',
+    chartTitle: 'YES PROBABILITY CHART',
+    betTitle: 'PLACE A BET',
+    btnYes: '✓ YES', btnNo: '✗ NO',
+    betPlaceholder: 'Choose YES or NO',
+    prevStake: 'You stake', prevWin: 'You win if correct', prevProfit: 'Potential profit', prevFee: 'Fee (2%)',
+    yesLabel: 'YES', noLabel: 'NO',
+    volLbl: 'Volume TON', tradesLbl: 'Trades', deadlineLbl: 'Closes in',
+    betYes: '✓ Bet YES', betNo: '✗ Bet NO',
+    overlayTitle: 'Bet placed!',
+    overlaySub: 'Transaction confirmed on the TON network.',
+    overlayOk: 'Great!',
+    overlayEvent: 'Event', overlayPos: 'Your position', overlaySpent: 'Spent', overlayTokens: 'Tokens bought', overlayPotential: 'Potential',
+    lbHeader: 'Trader Rankings', lbYourPos: 'YOUR POSITION', lbOfTotal: 'of 8,420',
+    lbYourStats: 'Accuracy: 68% · Profit: +38.5 TON',
+    lbTopTitle: 'TOP TRADERS',
+    langFlag: '🇬🇧',
+    catLabels: { sport:'Sports', politics:'Politics', crypto:'Crypto', culture:'Pop Culture' },
+    markets: ALL_MARKETS.map(m => ({ id:m.id, emoji:m.emoji, cat:m.cat, title:m.title_en })),
+    positions: [
+      { emoji:'⚽', title:'Real Madrid reach CL final 2025?', side:'yes', sideLabel:'YES', tokens:14.2, price:0.72, entry:0.64, pnl:'+1.14' },
+      { emoji:'₿', title:'Bitcoin hits $120k by September?', side:'yes', sideLabel:'YES', tokens:8.5, price:0.48, entry:0.52, pnl:'-0.34' },
+      { emoji:'🗳', title:'Trump signs crypto bill before July?', side:'no', sideLabel:'NO', tokens:22.0, price:0.39, entry:0.41, pnl:'-0.44' },
+    ],
+    posStatLabels: ['Tokens','Cur. price','P&L'],
+  }
+};
+
+const LEADERBOARD = [
+  { rank:1, emoji:'🦅', name:'@cryptohunter', profit:'+1 842 TON', acc:'84%', rankClass:'gold' },
+  { rank:2, emoji:'🐺', name:'@wolf_ton', profit:'+1 204 TON', acc:'79%', rankClass:'' },
+  { rank:3, emoji:'🔥', name:'@fire_trader', profit:'+987 TON', acc:'76%', rankClass:'' },
+  { rank:4, emoji:'🎯', name:'@precise_one', profit:'+743 TON', acc:'74%', rankClass:'' },
+  { rank:5, emoji:'🌙', name:'@moonbets', profit:'+612 TON', acc:'71%', rankClass:'' },
+  { rank:6, emoji:'⚡', name:'@fastmoney', profit:'+589 TON', acc:'69%', rankClass:'' },
+  { rank:7, emoji:'🦁', name:'@lion_king', profit:'+441 TON', acc:'67%', rankClass:'' },
+];
+
+// ── STATE ──────────────────────────────────────────────────────────
+let lang = 'en';
+let currentScreen = 'lang';
+let prevScreen = 'home';
+let currentMarketId = null;
+let selectedSide = null;
+let currentFilter = 'all';
+
+// ── LANGUAGE SELECT ────────────────────────────────────────────────
+function selectLang(l) {
+  lang = l;
+  applyTranslations();
+  // animate out lang screen
+  const ls = document.getElementById('screen-lang');
+  ls.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+  ls.style.opacity = '0';
+  ls.style.transform = 'scale(0.95)';
+  setTimeout(() => {
+    ls.classList.add('hidden');
+    ls.style.transform = '';
+    ls.style.opacity = '';
+  }, 400);
+  currentScreen = 'home';
+  document.getElementById('screen-home').classList.remove('hidden');
+}
+
+function showLangScreen() {
+  prevScreen = currentScreen;
+  const ls = document.getElementById('screen-lang');
+  ls.classList.remove('hidden');
+  ls.style.opacity = '0';
+  ls.style.transform = 'scale(0.95)';
+  ls.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+  requestAnimationFrame(() => {
+    ls.style.opacity = '1';
+    ls.style.transform = 'scale(1)';
+  });
+  currentScreen = 'lang';
+}
+
+function applyTranslations() {
+  const t = T[lang];
+  // lang button
+  document.getElementById('lang-flag-btn').textContent = t.langFlag;
+  // home
+  document.getElementById('home-greeting').textContent = t.greeting;
+  document.getElementById('hero-label').textContent = t.heroLabel;
+  document.getElementById('hero-sub').textContent = t.heroSub;
+  document.getElementById('stat-markets').textContent = t.statMarkets;
+  document.getElementById('stat-users').textContent = t.statUsers;
+  // nav 1 (home)
+  ['nav-markets','nav-bet','nav-portfolio','nav-rating'].forEach((id,i) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = [t.navMarkets, t.navBet, t.navPortfolio, t.navRating][i];
+  });
+  // portfolio
+  document.getElementById('portfolio-title').textContent = t.portfolioTitle;
+  document.getElementById('balance-label').textContent = t.balanceLabel;
+  document.getElementById('balance-sub').textContent = t.balanceSub;
+  document.getElementById('pnl-label').textContent = t.pnlLabel;
+  document.getElementById('positions-title').textContent = t.positionsTitle;
+  document.getElementById('nav-markets2').textContent = t.navMarkets;
+  document.getElementById('nav-bet2').textContent = t.navBet;
+  document.getElementById('nav-portfolio2').textContent = t.navPortfolio;
+  document.getElementById('nav-rating2').textContent = t.navRating;
+  // leaderboard
+  document.getElementById('lb-header-title').textContent = t.lbHeader;
+  document.getElementById('lb-your-pos').textContent = t.lbYourPos;
+  document.getElementById('lb-of-total').textContent = t.lbOfTotal;
+  document.getElementById('lb-your-stats').textContent = t.lbYourStats;
+  document.getElementById('lb-top-title').textContent = t.lbTopTitle;
+  document.getElementById('nav-markets3').textContent = t.navMarkets;
+  document.getElementById('nav-bet3').textContent = t.navBet;
+  document.getElementById('nav-portfolio3').textContent = t.navPortfolio;
+  document.getElementById('nav-rating3').textContent = t.navRating;
+  // bet screen nav (all 4 labels)
+  ['nav-markets-bet','nav-bet-active','nav-portfolio-bet','nav-rating-bet'].forEach((id,i) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = [t.navMarkets, t.navBet, t.navPortfolio, t.navRating][i];
+  });
+  const betTitle = document.getElementById('bet-screen-title');
+  if (betTitle) betTitle.textContent = '⚽ ' + t.navBet;
+  // detail labels
+  document.getElementById('chart-title').textContent = t.chartTitle;
+  document.getElementById('bet-title').textContent = t.betTitle;
+  document.getElementById('btn-yes').textContent = t.btnYes;
+  document.getElementById('btn-no').textContent = t.btnNo;
+  document.getElementById('place-bet-btn').textContent = t.betPlaceholder;
+  document.getElementById('prev-lbl-stake').textContent = t.prevStake;
+  document.getElementById('prev-lbl-win').textContent = t.prevWin;
+  document.getElementById('prev-lbl-profit').textContent = t.prevProfit;
+  document.getElementById('prev-lbl-fee').textContent = t.prevFee;
+  document.getElementById('d-yes-label').textContent = t.yesLabel;
+  document.getElementById('d-no-label').textContent = t.noLabel;
+  document.getElementById('d-vol-lbl').textContent = t.volLbl;
+  document.getElementById('d-trades-lbl').textContent = t.tradesLbl;
+  document.getElementById('d-deadline-lbl').textContent = t.deadlineLbl;
+  document.getElementById('overlay-title').textContent = t.overlayTitle;
+  document.getElementById('overlay-ok-btn').textContent = t.overlayOk;
+
+  renderTabs();
+  renderFeed(currentFilter);
+  renderPositions();
+  renderLeaderboard();
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────
+function renderTabs() {
+  const t = T[lang];
+  document.getElementById('category-tabs').innerHTML = t.tabs.map((label, i) => `
+    <div class="tab ${t.tabKeys[i] === currentFilter ? 'active' : ''}" onclick="filterTab(this,'${t.tabKeys[i]}')">${label}</div>
+  `).join('');
+}
+
+function renderFeed(filter='all') {
+  const t = T[lang];
+  const markets = filter === 'all' ? t.markets : t.markets.filter(m => m.cat === filter);
+  document.getElementById('market-feed').innerHTML = markets.map(m => {
+    const d = MARKET_DATA[m.id];
+    if (!d) return '';
+    return `
+    <div class="card market-card" onclick="openMarket(${m.id})">
+      <div class="market-card-top">
+        <div class="market-emoji">${m.emoji}</div>
+        <div class="market-info">
+          <div class="market-category">${t.catLabels[m.cat]}</div>
+          <div class="market-title">${m.title}</div>
+        </div>
+      </div>
+      <div class="market-bar"><div class="market-bar-fill" id="card-bar-${m.id}" style="width:${d.yes}%"></div></div>
+      <div class="market-meta">
+        <div class="market-prob">
+          <span class="prob-yes" id="card-yes-${m.id}">${t.yesLabel} ${d.yes.toFixed(0)}%</span>
+          <span class="prob-no" id="card-no-${m.id}">${t.noLabel} ${(100-d.yes).toFixed(0)}%</span>
+        </div>
+        <div>
+          <div class="market-vol">◈ ${d.vol.toLocaleString()}</div>
+          <div class="market-deadline">⏱ ${d.deadline}${lang==='en'?' days':' дн'}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderPositions() {
+  const t = T[lang];
+  document.getElementById('positions-list').innerHTML = t.positions.map(p => `
+    <div class="position-card">
+      <div class="position-top">
+        <span class="position-emoji">${p.emoji}</span>
+        <span class="position-title">${p.title}</span>
+        <span class="position-side ${p.side}">${p.sideLabel}</span>
+      </div>
+      <div class="position-bottom">
+        <div class="pos-stat"><div class="pos-stat-val">${p.tokens}</div><div class="pos-stat-lbl">${t.posStatLabels[0]}</div></div>
+        <div class="pos-stat"><div class="pos-stat-val">${p.price}</div><div class="pos-stat-lbl">${t.posStatLabels[1]}</div></div>
+        <div class="pos-stat"><div class="pos-stat-val ${parseFloat(p.pnl)>=0?'green':'red'}">${p.pnl} TON</div><div class="pos-stat-lbl">${t.posStatLabels[2]}</div></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderLeaderboard() {
+  document.getElementById('lb-list').innerHTML = LEADERBOARD.map(p => `
+    <div class="lb-item">
+      <div class="lb-rank ${p.rankClass}">${p.rank <= 3 ? ['🥇','🥈','🥉'][p.rank-1] : p.rank}</div>
+      <div class="lb-avatar">${p.emoji}</div>
+      <div class="lb-name">${p.name}</div>
+      <div>
+        <div class="lb-profit">${p.profit}</div>
+        <div class="lb-accuracy">${p.acc} ${lang==='en'?'accuracy':'точность'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── NAVIGATION ─────────────────────────────────────────────────────
+function showScreen(name) {
+  if (name === currentScreen) return;
+  // Hide ALL screens
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  // Show target
+  const to = document.getElementById('screen-' + name);
+  if (to) to.classList.remove('hidden');
+  prevScreen = currentScreen;
+  currentScreen = name;
+  if (name === 'bet') loadBetMatches();
+}
+
+function goBack() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  currentScreen = prevScreen === currentScreen ? 'home' : prevScreen;
+  prevScreen = 'home';
+  document.getElementById('screen-'+currentScreen).classList.remove('hidden');
+}
+
+// ── MARKET DETAIL ──────────────────────────────────────────────────
+function openMarket(id) {
+  const t = T[lang];
+  const m = t.markets.find(x => x.id === id);
+  const d = MARKET_DATA[id];
+  currentMarketId = id;
+  selectedSide = null;
+  document.getElementById('amount-input').value = '';
+
+  document.getElementById('d-emoji').textContent = m.emoji;
+  document.getElementById('d-cat').textContent = t.catLabels[m.cat].toUpperCase();
+  document.getElementById('d-title').textContent = m.title;
+  document.getElementById('d-yes-prob').textContent = d.yes + '%';
+  document.getElementById('d-no-prob').textContent = (100-d.yes) + '%';
+  document.getElementById('d-bar').style.width = d.yes + '%';
+  document.getElementById('d-vol').textContent = d.vol.toLocaleString();
+  document.getElementById('d-trades').textContent = d.trades.toLocaleString();
+  document.getElementById('d-deadline').textContent = d.deadline + (lang==='en'?' days':' дн');
+  document.getElementById('detail-header-title').textContent = t.catLabels[m.cat];
+  document.getElementById('btn-yes').className = 'bet-btn yes';
+  document.getElementById('btn-no').className = 'bet-btn no';
+  document.getElementById('btn-yes').textContent = t.btnYes;
+  document.getElementById('btn-no').textContent = t.btnNo;
+  document.getElementById('place-bet-btn').disabled = true;
+  document.getElementById('place-bet-btn').className = 'cta-btn';
+  document.getElementById('place-bet-btn').textContent = t.betPlaceholder;
+  updatePreviewDisplay(null, null);
+
+  prevScreen = currentScreen;
+  currentScreen = 'detail';
+  document.getElementById('screen-detail').classList.remove('hidden','slide-left');
+  const home = document.getElementById('screen-'+prevScreen);
+  home.classList.add('slide-left');
+  setTimeout(() => { home.classList.add('hidden'); home.classList.remove('slide-left'); }, 350);
+
+  drawChart(d.history);
+}
+
+// ── CHART ──────────────────────────────────────────────────────────
+function drawChart(data) {
+  setTimeout(() => {
+    const canvas = document.getElementById('price-chart');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const wrap = canvas.parentElement;
+    const pad = 16; // chart-wrap padding
+    const w = wrap.clientWidth - pad * 2;
+    const h = 110;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+    const margin = 8; // inner margin so line/dot never clips
+    const pts = data.map((v, i) => ({
+      x: margin + (i / (data.length - 1)) * (w - margin * 2),
+      y: margin + (1 - v / 100) * (h - margin * 2)
+    }));
+    // Gradient fill
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, 'rgba(0,229,160,0.25)');
+    grad.addColorStop(1, 'rgba(0,229,160,0)');
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, h);
+    pts.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(pts[pts.length-1].x, h);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    // Line
+    ctx.beginPath();
+    pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    ctx.strokeStyle = '#00e5a0';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    // Dot
+    const last = pts[pts.length - 1];
+    ctx.beginPath(); ctx.arc(last.x, last.y, 9, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,229,160,0.2)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(last.x, last.y, 5, 0, Math.PI*2);
+    ctx.fillStyle = '#00e5a0'; ctx.fill();
+  }, 80);
+}
+
+// ── BET LOGIC ──────────────────────────────────────────────────────
+function selectSide(side) {
+  const t = T[lang];
+  selectedSide = side;
+  document.getElementById('btn-yes').classList.toggle('selected', side==='yes');
+  document.getElementById('btn-no').classList.toggle('selected', side==='no');
+  const btn = document.getElementById('place-bet-btn');
+  btn.className = 'cta-btn ' + side + '-btn';
+  btn.textContent = side === 'yes' ? t.betYes : t.betNo;
+  const amt = parseFloat(document.getElementById('amount-input').value);
+  btn.disabled = !amt || amt < 0.5;
+  updatePreview();
+}
+
+function setAmount(v) {
+  document.getElementById('amount-input').value = v;
+  updatePreview();
+  if (selectedSide) document.getElementById('place-bet-btn').disabled = false;
+}
+
+function updatePreview() {
+  const amt = parseFloat(document.getElementById('amount-input').value) || 0;
+  if (selectedSide && amt >= 0.5) document.getElementById('place-bet-btn').disabled = false;
+  updatePreviewDisplay(selectedSide, amt);
+}
+
+function updatePreviewDisplay(side, amt) {
+  if (!side || !amt) {
+    document.getElementById('prev-amount').textContent = '— TON';
+    document.getElementById('prev-win').textContent = '— TON';
+    document.getElementById('prev-profit').textContent = '—';
+    document.getElementById('prev-fee').textContent = '—';
+    return;
+  }
+  const d = MARKET_DATA[currentMarketId];
+  const prob = side==='yes' ? d.yes/100 : (100-d.yes)/100;
+  const fee = amt*0.02, net = amt-fee, tokens = net/prob;
+  document.getElementById('prev-amount').textContent = amt.toFixed(2)+' TON';
+  document.getElementById('prev-win').textContent = tokens.toFixed(2)+' TON';
+  document.getElementById('prev-profit').textContent = '+'+(tokens-amt).toFixed(2)+' TON';
+  document.getElementById('prev-fee').textContent = fee.toFixed(3)+' TON';
+}
+
+function placeBet() {
+  const t = T[lang];
+  const amt = parseFloat(document.getElementById('amount-input').value);
+  if (!selectedSide || !amt || amt<0.5) return;
+  const d = MARKET_DATA[currentMarketId];
+  const m = T[lang].markets.find(x=>x.id===currentMarketId);
+  const prob = selectedSide==='yes' ? d.yes/100 : (100-d.yes)/100;
+  const tokens = (amt*0.98)/prob;
+  const profit = tokens - amt;
+  const sideLabel = selectedSide==='yes' ? t.yesLabel : t.noLabel;
+  document.getElementById('overlay-sub').textContent = t.overlaySub;
+  document.getElementById('overlay-detail').innerHTML = `
+    <div class="overlay-row"><span class="overlay-lbl">${t.overlayEvent}</span><span class="overlay-val" style="max-width:55%;text-align:right;font-size:11px;font-family:'Geist',sans-serif">${m.emoji} ${m.title.slice(0,38)}…</span></div>
+    <div class="overlay-row"><span class="overlay-lbl">${t.overlayPos}</span><span class="overlay-val" style="color:${selectedSide==='yes'?'var(--yes)':'var(--no)'}">${sideLabel}</span></div>
+    <div class="overlay-row"><span class="overlay-lbl">${t.overlaySpent}</span><span class="overlay-val">${amt.toFixed(2)} TON</span></div>
+    <div class="overlay-row"><span class="overlay-lbl">${t.overlayTokens}</span><span class="overlay-val">${tokens.toFixed(2)}</span></div>
+    <div class="overlay-row"><span class="overlay-lbl">${t.overlayPotential}</span><span class="overlay-val" style="color:var(--yes)">+${profit.toFixed(2)} TON</span></div>
+  `;
+  document.getElementById('success-overlay').classList.add('active');
+}
+
+function closeOverlay() {
+  document.getElementById('success-overlay').classList.remove('active');
+  document.getElementById('amount-input').value = '';
+  selectedSide = null;
+  const t = T[lang];
+  document.getElementById('btn-yes').className = 'bet-btn yes';
+  document.getElementById('btn-no').className = 'bet-btn no';
+  document.getElementById('btn-yes').textContent = t.btnYes;
+  document.getElementById('btn-no').textContent = t.btnNo;
+  document.getElementById('place-bet-btn').disabled = true;
+  document.getElementById('place-bet-btn').className = 'cta-btn';
+  document.getElementById('place-bet-btn').textContent = t.betPlaceholder;
+  updatePreviewDisplay(null, null);
+}
+
+function filterTab(el, filter) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentFilter = filter;
+  renderFeed(filter);
+}
+
+// ── LIVE PRICE UPDATE ──────────────────────────────────────────────
+setInterval(() => {
+  Object.keys(MARKET_DATA).forEach(id => {
+    const d = MARKET_DATA[id];
+    d.yes = Math.max(2, Math.min(98, d.yes + (Math.random()-0.5)*2));
+    d.history.push(d.yes);
+    if (d.history.length > 12) d.history.shift();
+  });
+
+  // Обновляем только цифры — карточки не перерисовываем, мерцания нет
+  if (currentScreen==='home') {
+    const t = T[lang];
+    Object.keys(MARKET_DATA).forEach(id => {
+      const d = MARKET_DATA[id];
+      const yesEl = document.getElementById('card-yes-'+id);
+      const noEl  = document.getElementById('card-no-'+id);
+      const barEl = document.getElementById('card-bar-'+id);
+      if (!yesEl) return;
+      yesEl.textContent = t.yesLabel+' '+d.yes.toFixed(0)+'%';
+      noEl.textContent  = t.noLabel+' '+(100-d.yes).toFixed(0)+'%';
+      barEl.style.width = d.yes+'%';
+    });
+  }
+
+  if (currentScreen==='detail' && currentMarketId) {
+    const d = MARKET_DATA[currentMarketId];
+    document.getElementById('d-yes-prob').textContent = d.yes.toFixed(0)+'%';
+    document.getElementById('d-no-prob').textContent = (100-d.yes).toFixed(0)+'%';
+    document.getElementById('d-bar').style.width = d.yes+'%';
+    drawChart(d.history);
+    updatePreview();
+  }
+}, 3000);
+
+// ── INIT ───────────────────────────────────────────────────────────
+const TON_BALANCE = 245.8;
+
+async function fetchTONPrice() {
+  try {
+    const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd');
+    const data = await res.json();
+    const price = data['the-open-network']?.usd;
+    if (!price) return;
+    const usd = (TON_BALANCE * price).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    const priceStr = price.toFixed(2);
+    document.getElementById('balance-usd-val').textContent = `$${usd}`;
+    // Also update header wallet display
+    const headerTon = document.querySelector('.header-ton-usd');
+    if (headerTon) headerTon.textContent = `$${(TON_BALANCE * price).toFixed(0)}`;
+  } catch(e) {
+    document.getElementById('balance-usd-val').textContent = '—';
+  }
+}
+
+fetchTONPrice();
+setInterval(fetchTONPrice, 60000); // обновляем курс каждую минуту
+applyTranslations();
+
+
+// ══════════════════════════════════════════════════════════════════
+// ── TONCONNECT ────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+let walletConnected = false;
+let walletAddress = '';
+let walletBalance = 0;
+
+function openWalletScreen() {
+  prevScreen = currentScreen;
+  currentScreen = 'wallet';
+  renderWalletScreen();
+  document.getElementById('screen-wallet').classList.remove('hidden','slide-left');
+  const from = document.getElementById('screen-' + prevScreen);
+  from.classList.add('slide-left');
+  setTimeout(() => { from.classList.add('hidden'); from.classList.remove('slide-left'); }, 350);
+}
+
+function renderWalletScreen() {
+  document.getElementById('wallet-header-title').textContent =
+    lang==='en' ? 'Wallet' : lang==='uk' ? 'Гаманець' : 'Кошелёк';
+  const el = document.getElementById('wallet-content');
+  if (!el) return;
+
+  if (walletConnected) {
+    const short = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4);
+    el.innerHTML = `
+      <div class="wallet-connected-card fade-in">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--ton);">
+          ${lang==='en'?'CONNECTED WALLET':lang==='uk'?'ПІДКЛЮЧЕНИЙ ГАМАНЕЦЬ':'ПОДКЛЮЧЁННЫЙ КОШЕЛЁК'}
+        </div>
+        <div style="font-family:'Clash Display',sans-serif;font-size:28px;font-weight:700;margin-top:8px;">
+          ${walletBalance.toFixed(2)} <span style="font-size:16px;color:var(--ton)">◈ TON</span>
+        </div>
+        <div class="wallet-addr">${short}</div>
+        <button class="wallet-disconnect" onclick="disconnectWallet()">
+          ${lang==='en'?'Disconnect wallet':lang==='uk'?'Відключити гаманець':'Отключить кошелёк'}
+        </button>
+      </div>
+      <div style="padding:0 16px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;">
+            ${lang==='en'?'Recent transactions':lang==='uk'?'Останні транзакції':'Последние транзакции'}
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+            <div style="width:32px;height:32px;border-radius:8px;background:var(--yes-dim);display:flex;align-items:center;justify-content:center;">🏆</div>
+            <div style="flex:1;"><div style="font-size:12px;font-weight:600;">Won — Bitcoin $150k?</div><div style="font-size:10px;color:var(--muted);margin-top:1px;">1h ago</div></div>
+            <div style="font-family:'Geist Mono',monospace;font-size:13px;font-weight:700;color:var(--yes);">+12.4 TON</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+            <div style="width:32px;height:32px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;">🎯</div>
+            <div style="flex:1;"><div style="font-size:12px;font-weight:600;">Bet YES — GTA VI in 2026?</div><div style="font-size:10px;color:var(--muted);margin-top:1px;">3h ago</div></div>
+            <div style="font-family:'Geist Mono',monospace;font-size:13px;font-weight:700;color:var(--muted);">−5.0 TON</div>
+          </div>
+        </div>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <div class="wallet-connect-card fade-in">
+        <div class="wallet-icon-big">💎</div>
+        <div class="wallet-connect-title">
+          ${lang==='en'?'Connect your wallet':lang==='uk'?'Підключіть гаманець':'Подключите кошелёк'}
+        </div>
+        <div class="wallet-connect-sub">
+          ${lang==='en'?'Connect your TON wallet to place real bets and track your balance.':lang==='uk'?'Підключіть TON гаманець щоб робити реальні ставки та відстежувати баланс.':'Подключите TON кошелёк чтобы делать реальные ставки и отслеживать баланс.'}
+        </div>
+        <div class="wallet-options">
+          <div class="wallet-option" onclick="connectWallet('tonkeeper')">
+            <div class="wallet-option-icon">💎</div>
+            <div><div class="wallet-option-name">Tonkeeper</div><div class="wallet-option-sub">Most popular TON wallet</div></div>
+            <div class="wallet-option-arrow">›</div>
+          </div>
+          <div class="wallet-option" onclick="connectWallet('mytonwallet')">
+            <div class="wallet-option-icon">🔵</div>
+            <div><div class="wallet-option-name">MyTonWallet</div><div class="wallet-option-sub">Official TON Foundation wallet</div></div>
+            <div class="wallet-option-arrow">›</div>
+          </div>
+          <div class="wallet-option" onclick="connectWallet('tonhub')">
+            <div class="wallet-option-icon">🟣</div>
+            <div><div class="wallet-option-name">Tonhub</div><div class="wallet-option-sub">Web & mobile wallet</div></div>
+            <div class="wallet-option-arrow">›</div>
+          </div>
+        </div>
+      </div>`;
+  }
+}
+
+async function connectWallet(walletType) {
+  const el = document.getElementById('wallet-content');
+  el.innerHTML = `<div style="text-align:center;padding:60px 24px;">
+    <div style="font-size:48px;margin-bottom:16px;animation:spin 1s linear infinite;">⟳</div>
+    <div style="font-family:'Clash Display',sans-serif;font-size:18px;font-weight:700;margin-bottom:8px;">
+      ${lang==='en'?'Connecting...':lang==='uk'?'Підключення...':'Подключение...'}
+    </div>
+    <div style="font-size:13px;color:var(--muted);">
+      ${lang==='en'?'Waiting for wallet confirmation':lang==='uk'?'Очікуємо підтвердження':'Ожидаем подтверждение'}
+    </div>
+  </div>
+  <style>@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}</style>`;
+
+  await new Promise(r => setTimeout(r, 2200));
+  walletConnected = true;
+  walletAddress = 'UQ' + Math.random().toString(36).substring(2,8).toUpperCase() + Math.random().toString(36).substring(2,14).toUpperCase();
+  walletBalance = 45.2 + Math.random() * 200;
+  updateTCButton();
+  renderWalletScreen();
+  showBetToast(lang==='en'?'✓ Wallet connected!':lang==='uk'?'✓ Гаманець підключено!':'✓ Кошелёк подключён!', 'yes');
+}
+
+function disconnectWallet() {
+  walletConnected = false;
+  walletAddress = '';
+  walletBalance = 0;
+  updateTCButton();
+  renderWalletScreen();
+}
+
+function updateTCButton() {
+  const btn = document.getElementById('tc-btn');
+  const txt = document.getElementById('tc-btn-text');
+  if (!btn) return;
+  if (walletConnected) {
+    btn.classList.add('connected');
+    txt.textContent = walletAddress.slice(0,4)+'...'+walletAddress.slice(-3);
+  } else {
+    btn.classList.remove('connected');
+    txt.textContent = lang==='en'?'Connect':lang==='uk'?'Гаманець':'Кошелёк';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ── LIVE ACTIVITY FEED ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+const FAKE_USERS = [
+  {name:'@whale_ton',emoji:'🐳'},{name:'@cryptohunter',emoji:'🦅'},
+  {name:'@sport_fan',emoji:'⚽'},{name:'@moon_bet',emoji:'🌙'},
+  {name:'@fast_money',emoji:'⚡'},{name:'@lion_king',emoji:'🦁'},
+  {name:'@fire_trade',emoji:'🔥'},{name:'@diamond_h',emoji:'💎'},
+  {name:'@wolf_ton',emoji:'🐺'},{name:'@pro_gamer',emoji:'🎮'},
+  {name:'@politico',emoji:'🗳'},{name:'@btc_maxi',emoji:'₿'},
+  {name:'@analytics',emoji:'📊'},{name:'@top_gun',emoji:'🎯'},
+  {name:'@night_owl',emoji:'🦉'},{name:'@rocket_m',emoji:'🚀'},
+];
+const BET_AMOUNTS = [0.5,1,1.5,2,3,5,7,10,15,20,25,50];
+let liveFeedItems = [];
+let onlineCount = 847 + Math.floor(Math.random()*200);
+
+function generateLiveItem() {
+  const user = FAKE_USERS[Math.floor(Math.random()*FAKE_USERS.length)];
+  const markets = T[lang]?.markets || [];
+  if (!markets.length) return null;
+  const market = markets[Math.floor(Math.random()*Math.min(markets.length,20))];
+  const side = Math.random()>0.45?'yes':'no';
+  const amount = BET_AMOUNTS[Math.floor(Math.random()*BET_AMOUNTS.length)];
+  const sideLabel = side==='yes'
+    ? (lang==='en'?'YES':lang==='uk'?'ТАК':'ДА')
+    : (lang==='en'?'NO':lang==='uk'?'НІ':'НЕТ');
+  return {user, market, side, sideLabel, amount};
+}
+
+function renderLiveFeed() {
+  const el = document.getElementById('live-feed-list');
+  if (!el) return;
+  const label = document.getElementById('live-feed-label');
+  if (label) label.textContent = lang==='en'?'Live bets':lang==='uk'?'Живі ставки':'Живые ставки';
+  el.innerHTML = liveFeedItems.slice(0,3).map(item => `
+    <div class="live-item">
+      <div class="live-item-avatar">${item.user.emoji}</div>
+      <div class="live-item-body">
+        <div class="live-item-user">${item.user.name}</div>
+        <div class="live-item-action">${item.sideLabel} — ${item.market.title.slice(0,42)}${item.market.title.length>42?'…':''}</div>
+      </div>
+      <div class="live-item-amount ${item.side}">${item.amount} TON</div>
+    </div>`).join('');
+}
+
+function updateOnlineCount() {
+  onlineCount += Math.floor((Math.random()-0.4)*5);
+  onlineCount = Math.max(600, Math.min(2000, onlineCount));
+  const el = document.getElementById('online-count');
+  if (el) el.textContent = onlineCount.toLocaleString();
+}
+
+function addLiveBet() {
+  const item = generateLiveItem();
+  if (!item) return;
+  liveFeedItems.unshift(item);
+  if (liveFeedItems.length>10) liveFeedItems.pop();
+  if (currentScreen==='home') renderLiveFeed();
+  if (MARKET_DATA[item.market.id]) {
+    const shift = item.side==='yes'?0.3:-0.3;
+    MARKET_DATA[item.market.id].yes = Math.min(97,Math.max(3,MARKET_DATA[item.market.id].yes+shift));
+  }
+}
+
+function showBetToast(msg, side) {
+  const t = document.getElementById('bet-toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.color = side==='yes'?'var(--yes)':side==='no'?'var(--no)':'var(--text)';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+// ── SUPABASE REALTIME ONLINE COUNTER ─────────────────────────────
+const SUPABASE_URL = 'https://puwyrjejaaqfhcjwgrog.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_k19dhvmixv_YnZDkCTSygg_s9cNqCfW';
+
+async function supaFetch(path, method='GET', body=null) {
+  const opts = {
+    method,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'resolution=merge-duplicates' : '',
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(SUPABASE_URL + path, opts);
+  if (!res.ok) return null;
+  return res.json().catch(() => null);
+}
+
+async function pingOnline() {
+  // Wait until we have a user ID
+  if (!userTelegramId) return;
+  await supaFetch('/rest/v1/online_users', 'POST', {
+    session_id: userTelegramId,
+    last_seen: new Date().toISOString()
+  });
+}
+
+async function fetchOnlineCount() {
+  try {
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const data = await supaFetch('/rest/v1/online_users?last_seen=gte.' + fiveMinAgo + '&select=session_id');
+    if (data && data.length >= 0) {
+      onlineCount = Math.max(data.length, 1);
+      const el = document.getElementById('online-count');
+      if (el) el.textContent = onlineCount.toLocaleString();
+    }
+  } catch(e) { updateOnlineCount(); }
+}
+
+async function cleanupOldSessions() {
+  const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  await supaFetch('/rest/v1/online_users?last_seen=lt.' + tenMinAgo, 'DELETE');
+}
+
+// Ping starts after user is initialized (see initTelegramUser)
+setInterval(async () => { await pingOnline(); await fetchOnlineCount(); }, 30000);
+setInterval(cleanupOldSessions, 5 * 60 * 1000);
+
+// Seed + start live feed
+setTimeout(()=>{
+  for(let i=0;i<3;i++){const item=generateLiveItem();if(item)liveFeedItems.push(item);}
+  renderLiveFeed();
+}, 600);
+
+setInterval(()=>{
+  addLiveBet();
+  setTimeout(addLiveBet, 1200+Math.random()*800);
+}, 3500+Math.random()*2000);
+
+
+// ══════════════════════════════════════════════════════════════════
+// ── DEPOSIT SYSTEM ────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+const OWNER_TON_ADDRESS = 'UQBzbya6szQcMYujoUB85GCvPa2LV6ijVE62uyknqdEL5rBJ';
+const DEPOSIT_AMOUNTS = [1, 5, 10, 25, 50, 100, 250, 500];
+
+let currentDepositAmount = 0;
+let currentDepositComment = '';
+let userTelegramId = null;
+let userBalance = 0;
+
+// Generate Telegram user ID from WebApp or random for demo
+function initTelegramUser() {
+  if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
+    const u = Telegram.WebApp.initDataUnsafe.user;
+    userTelegramId = String(u.id);
+  } else {
+    // Demo mode - use stored ID or generate new
+    userTelegramId = localStorage.getItem('eventon_uid') || 'demo_' + Math.random().toString(36).substring(2,10);
+    localStorage.setItem('eventon_uid', userTelegramId);
+  }
+  loadUserBalance();
+  loadCreatorStats();
+  // Now that we have a stable user ID, ping online counter
+  pingOnline().then(fetchOnlineCount);
+}
+
+function generateDepositComment() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'EVT-';
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+async function loadUserBalance() {
+  try {
+    // Try to get user from Supabase
+    const data = await supaFetch('/rest/v1/users?telegram_id=eq.' + userTelegramId + '&select=balance,username');
+    if (data && data.length > 0) {
+      userBalance = parseFloat(data[0].balance) || 0;
+    } else {
+      // Create user if not exists
+      await supaFetch('/rest/v1/users', 'POST', {
+        telegram_id: userTelegramId,
+        username: window.Telegram?.WebApp?.initDataUnsafe?.user?.username || 'user_' + userTelegramId.slice(-4),
+        balance: 0
+      });
+      userBalance = 0;
+    }
+    updateBalanceDisplay();
+  } catch(e) {
+    console.log('Balance load error:', e);
+  }
+}
+
+function updateBalanceDisplay() {
+  const el = document.getElementById('portfolio-balance');
+  if (el) el.innerHTML = userBalance.toFixed(2) + ' <span style="font-size:20px;color:var(--ton)">◈</span>';
+  // Update header balance too
+  const hdr = document.querySelector('.header-ton-val');
+  if (hdr) hdr.textContent = userBalance.toFixed(1);
+}
+
+function openDepositModal() {
+  currentDepositComment = generateDepositComment();
+  document.getElementById('deposit-comment-val').textContent = currentDepositComment;
+  document.getElementById('deposit-amount-input').value = '';
+  currentDepositAmount = 0;
+
+  // Render amount buttons
+  const t = T[lang];
+  document.getElementById('deposit-modal-title').textContent = lang==='en'?'💎 Add funds':lang==='uk'?'💎 Поповнити баланс':'💎 Пополнить баланс';
+  document.getElementById('deposit-modal-sub').textContent = lang==='en'?'Choose amount and transfer TON. Include the code in comment — required!':lang==='uk'?'Оберіть суму та переведіть TON. Вкажіть код у коментарі — це обов\'язково!':'Выберите сумму и переведите TON. Укажите код в комментарии — обязательно!';
+  document.getElementById('deposit-comment-label').textContent = lang==='en'?'Your code (required!)':lang==='uk'?'Ваш код (обов\'язково!)':'Ваш код (обязательно!)';
+  document.getElementById('deposit-confirm-label').textContent = lang==='en'?'Open wallet':lang==='uk'?'Відкрити гаманець':'Открыть кошелёк';
+
+  const grid = document.getElementById('deposit-amounts-grid');
+  grid.innerHTML = DEPOSIT_AMOUNTS.map(a => 
+    '<div class="deposit-amount-btn" onclick="selectDepositAmount(' + a + ')">' + a + ' TON</div>'
+  ).join('');
+
+  document.getElementById('deposit-modal').classList.remove('hidden');
+}
+
+function closeDepositModal(e) {
+  if (!e || e.target === document.getElementById('deposit-modal')) {
+    document.getElementById('deposit-modal').classList.add('hidden');
+  }
+}
+
+function closePendingModal(e) {
+  if (!e || e.target === document.getElementById('pending-modal')) {
+    document.getElementById('pending-modal').classList.add('hidden');
+  }
+}
+
+function selectDepositAmount(amount) {
+  currentDepositAmount = amount;
+  document.getElementById('deposit-amount-input').value = amount;
+  document.querySelectorAll('.deposit-amount-btn').forEach(btn => {
+    btn.classList.toggle('selected', parseFloat(btn.textContent) === amount);
+  });
+}
+
+function onDepositAmountInput() {
+  currentDepositAmount = parseFloat(document.getElementById('deposit-amount-input').value) || 0;
+  document.querySelectorAll('.deposit-amount-btn').forEach(btn => {
+    btn.classList.toggle('selected', parseFloat(btn.textContent) === currentDepositAmount);
+  });
+}
+
+function copyDepositComment() {
+  navigator.clipboard.writeText(currentDepositComment).catch(() => {});
+  showBetToast(lang==='en'?'Code copied!':lang==='uk'?'Код скопійовано!':'Код скопирован!', 'yes');
+}
+
+async function confirmDeposit() {
+  if (!currentDepositAmount || currentDepositAmount < 0.1) {
+    showBetToast(lang==='en'?'Enter amount':lang==='uk'?'Введіть суму':'Введите сумму', 'no');
+    return;
+  }
+
+  const btn = document.getElementById('deposit-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ ...';
+
+  // Save pending transaction to Supabase
+  try {
+    await supaFetch('/rest/v1/transactions', 'POST', {
+      telegram_id: userTelegramId,
+      amount: currentDepositAmount,
+      type: 'deposit',
+      comment: currentDepositComment,
+      status: 'pending'
+    });
+  } catch(e) { console.log('Supabase save error:', e); }
+
+  btn.disabled = false;
+  btn.textContent = lang==='en'?'Open wallet':lang==='uk'?'Відкрити гаманець':'Открыть кошелёк';
+
+  // Close deposit modal
+  document.getElementById('deposit-modal').classList.add('hidden');
+
+  // Build TON transfer links
+  const nanoTon = Math.round(currentDepositAmount * 1e9);
+  const comment = encodeURIComponent(currentDepositComment);
+  // ton:// works on mobile with Tonkeeper installed
+  const tonDeepLink = 'ton://transfer/' + OWNER_TON_ADDRESS + '?amount=' + nanoTon + '&text=' + comment;
+  // Universal link works everywhere (opens Tonkeeper web or app)
+  const tonUniversal = 'https://app.tonkeeper.com/transfer/' + OWNER_TON_ADDRESS + '?amount=' + nanoTon + '&text=' + comment;
+
+  const openLabel = lang==='en'?'Open Tonkeeper':lang==='uk'?'Відкрити Tonkeeper':'Открыть Tonkeeper';
+  const awaitLabel = lang==='en'?'Awaiting payment':lang==='uk'?'Очікуємо оплату':'Ожидаем оплату';
+  const codeLabel = lang==='en'?'Code':'Код';
+
+  document.getElementById('pending-deposit-info').innerHTML =
+    '<div class="pending-deposit-card">' +
+      '<div class="pending-dot"></div>' +
+      '<div>' +
+        '<div style="font-size:14px;font-weight:700;">' + currentDepositAmount + ' TON — ' + awaitLabel + '</div>' +
+        '<div style="font-size:11px;color:var(--muted);margin-top:3px;">' + codeLabel + ': <span style="color:var(--yes);font-family:monospace;font-weight:700;letter-spacing:0.1em;">' + currentDepositComment + '</span></div>' +
+      '</div>' +
+    '</div>' +
+    // Button 1: Tonkeeper in Telegram (Mini App)
+    '<a href="https://t.me/wallet/start?startapp=transfer-' + OWNER_TON_ADDRESS + '_' + nanoTon + '_' + comment + '" target="_blank" style="display:block;background:linear-gradient(135deg,#0098ea,#006ab5);border-radius:14px;padding:14px 16px;text-align:center;color:#fff;font-size:15px;font-weight:700;text-decoration:none;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px;"><span>✈️</span> Tonkeeper в Telegram</a>' +
+    // Button 2: Tonkeeper app / web
+    '<a href="' + tonDeepLink + '" onclick="setTimeout(()=>{window.open(\'' + tonUniversal + '\',\'_blank\')},600)" style="display:block;background:var(--surface2);border:1px solid rgba(0,152,234,0.3);border-radius:14px;padding:14px 16px;text-align:center;color:var(--ton);font-size:15px;font-weight:700;text-decoration:none;margin-bottom:8px;">💎 Tonkeeper App</a>' +
+    // Button 3: Copy address
+    '<div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:6px;">' + (lang==='en'?'or copy wallet address':lang==='uk'?'або скопіюйте адресу':'или скопируйте адрес') + '</div>' +
+    '<div onclick="navigator.clipboard.writeText(\'' + OWNER_TON_ADDRESS + '\').then(()=>showBetToast(\'✓ Скопировано\',\'yes\'))" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-family:monospace;font-size:11px;color:var(--ton);word-break:break-all;cursor:pointer;text-align:center;">' + OWNER_TON_ADDRESS + '</div>';
+
+  document.getElementById('pending-modal').classList.remove('hidden');
+}
+
+// ── ADMIN: Confirm deposit (called from admin panel) ──────────────
+async function adminConfirmDeposit(comment, telegramId, amount) {
+  // Update transaction status
+  await supaFetch('/rest/v1/transactions?comment=eq.' + comment, 'PATCH', { status: 'completed' });
+  // Add balance to user
+  const userData = await supaFetch('/rest/v1/users?telegram_id=eq.' + telegramId + '&select=balance');
+  if (userData && userData.length > 0) {
+    const newBalance = parseFloat(userData[0].balance) + parseFloat(amount);
+    await supaFetch('/rest/v1/users?telegram_id=eq.' + telegramId, 'PATCH', { balance: newBalance });
+  }
+}
+
+// ── LOAD MARKETS FROM SUPABASE ───────────────────────────────────
+async function loadMarketsFromSupabase() {
+  try {
+    const data = await supaFetch('/rest/v1/markets?active=eq.true&order=id.asc&select=*');
+    if (!data || !data.length) return; // fallback to hardcoded
+
+    // Rebuild ALL_MARKETS and MARKET_DATA from Supabase
+    const newMarkets = data.map(m => ({
+      id: m.id,
+      emoji: m.emoji,
+      cat: m.cat,
+      title_ru: m.title_ru,
+      title_uk: m.title_uk,
+      title_en: m.title_en,
+      yes: m.yes_prob,
+      vol: m.volume,
+      trades: m.trades,
+      deadline: String(m.deadline_days),
+    }));
+
+    // Update MARKET_DATA
+    newMarkets.forEach(m => {
+      const history = [];
+      let val = m.yes + (Math.random()-0.5)*15;
+      for (let i=0;i<8;i++) {
+        val = Math.max(3,Math.min(97,val+(Math.random()-0.5)*5));
+        history.push(Math.round(val));
+      }
+      history[history.length-1] = m.yes;
+      MARKET_DATA[m.id] = { yes:m.yes, vol:m.vol, trades:m.trades, deadline:m.deadline, history };
+    });
+
+    // Update translations
+    ['ru','uk','en'].forEach(l => {
+      T[l].markets = newMarkets.map(m => ({
+        id: m.id,
+        emoji: m.emoji,
+        cat: m.cat,
+        title: m['title_'+l],
+      }));
+    });
+
+    renderFeed(currentFilter);
+    console.log('Loaded', newMarkets.length, 'markets from Supabase');
+  } catch(e) {
+    console.log('Markets load error, using hardcoded:', e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ── PROPOSE MARKET SYSTEM ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+const CREATOR_FEE_PCT = 0.005; // 0.5%
+
+function openProposeModal() {
+  const t = T[lang];
+  document.getElementById('propose-title').textContent = lang==='en'?'💡 Propose a Market':lang==='uk'?'💡 Запропонувати ринок':'💡 Предложить рынок';
+  document.getElementById('propose-sub').textContent = lang==='en'?'If published, you earn 0.5% of every bet placed.':lang==='uk'?'Якщо опублікують — отримуєте 0.5% з кожної ставки.':'Если опубликуют — вы получаете 0.5% с каждой ставки.';
+  document.getElementById('propose-title-input').value = '';
+  document.getElementById('propose-prob').value = 50;
+  document.getElementById('propose-modal').classList.remove('hidden');
+}
+
+function closeProposeModal(e) {
+  if (!e || e.target === document.getElementById('propose-modal')) {
+    document.getElementById('propose-modal').classList.add('hidden');
+  }
+}
+
+async function submitProposal() {
+  const title = document.getElementById('propose-title-input').value.trim();
+  if (!title || title.length < 10) {
+    showBetToast(lang==='en'?'Write a question (min 10 chars)':lang==='uk'?'Напишіть питання (мін 10 символів)':'Напишите вопрос (мин 10 символов)', 'no');
+    return;
+  }
+
+  const btn = document.getElementById('propose-submit-btn');
+  btn.disabled = true;
+  document.getElementById('propose-submit-label').textContent = '⏳ ...';
+
+  try {
+    await supaFetch('/rest/v1/market_proposals', 'POST', {
+      telegram_id: userTelegramId,
+      title_ru: title,
+      title_uk: title,
+      title_en: title,
+      cat: document.getElementById('propose-cat').value,
+      yes_prob: parseInt(document.getElementById('propose-prob').value) || 50,
+      deadline_days: 30,
+      status: 'pending'
+    });
+
+    document.getElementById('propose-modal').classList.add('hidden');
+    showBetToast(lang==='en'?'✓ Proposal sent!':lang==='uk'?'✓ Пропозицію надіслано!':'✓ Предложение отправлено!', 'yes');
+  } catch(e) {
+    showBetToast('Ошибка, попробуйте ещё раз', 'no');
+  }
+
+  btn.disabled = false;
+  document.getElementById('propose-submit-label').textContent = lang==='en'?'Send proposal':lang==='uk'?'Надіслати пропозицію':'Отправить предложение';
+}
+
+async function loadCreatorStats() {
+  if (!userTelegramId) return;
+  try {
+    // Get markets created by this user
+    const markets = await supaFetch('/rest/v1/markets?creator_id=eq.' + userTelegramId + '&select=id,title_ru,creator_fee');
+    if (!markets || !markets.length) return;
+
+    const totalEarned = markets.reduce((sum, m) => sum + (parseFloat(m.creator_fee) || 0), 0);
+
+    // Show creator card
+    const card = document.getElementById('creator-card');
+    if (card) {
+      card.style.display = 'block';
+      document.getElementById('creator-earnings').textContent = totalEarned.toFixed(2) + ' TON';
+      document.getElementById('creator-markets-count').textContent = markets.length;
+      card.onclick = () => showMyProposals(markets);
+    }
+  } catch(e) {}
+}
+
+async function showMyProposals(markets) {
+  const list = document.getElementById('my-proposals-list');
+  list.innerHTML = markets.map(m => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;">
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px;">${m.title_ru}</div>
+      <div style="font-size:12px;color:#a78bfa;">◈ ${(parseFloat(m.creator_fee)||0).toFixed(2)} TON заработано</div>
+    </div>`).join('');
+  document.getElementById('my-proposals-modal').classList.remove('hidden');
+}
+
+// Init on load
+setTimeout(initTelegramUser, 500);
+setTimeout(loadMarketsFromSupabase, 800);
+setInterval(loadMarketsFromSupabase, 10 * 60 * 1000); // refresh every 10min
+
+// Poll balance every 30 seconds
+setInterval(loadUserBalance, 30000);
+
+
+// ══════════════════════════════════════════════════════════════════
+// ── BET SCREEN ────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+
+let betMatches = [];
+let betslip = []; // { matchId, matchTitle, pick, label, odds }
+let currentBetSportFilter = 'all';
+
+// Hardcoded sample matches (will be replaced by Supabase data)
+const SAMPLE_MATCHES = [
+  {
+    id: 'pl_001', league: 'АПЛ', leagueCode: 'PL',
+    home: 'Liverpool', away: 'Tottenham',
+    homeFlag: '🔴', awayFlag: '⚪',
+    time: 'Сег. 22:00',
+    odds: { h: 1.75, d: 3.80, a: 4.50 },
+    totals: [
+      { label: 'Тотал больше 1.5', odds: 1.35 },
+      { label: 'Тотал больше 2.5', odds: 1.85 },
+      { label: 'Тотал больше 3.5', odds: 2.80 },
+      { label: 'Тотал меньше 2.5', odds: 2.05 },
+    ],
+    btts: { yes: 1.72, no: 2.05 },
+    handicap: [
+      { label: 'Ф1 (-1.5)', odds: 2.90 },
+      { label: 'Ф2 (+1.5)', odds: 1.45 },
+    ]
+  },
+  {
+    id: 'pd_001', league: 'Ла Лига', leagueCode: 'PD',
+    home: 'Real Madrid', away: 'Barcelona',
+    homeFlag: '⚪', awayFlag: '🔵',
+    time: 'Завтра 21:00',
+    odds: { h: 2.10, d: 3.40, a: 3.20 },
+    totals: [
+      { label: 'Тотал больше 1.5', odds: 1.28 },
+      { label: 'Тотал больше 2.5', odds: 1.75 },
+      { label: 'Тотал больше 3.5', odds: 2.60 },
+      { label: 'Тотал меньше 2.5', odds: 2.15 },
+    ],
+    btts: { yes: 1.65, no: 2.20 },
+    handicap: [
+      { label: 'Ф1 (-0.5)', odds: 2.50 },
+      { label: 'Ф2 (+0.5)', odds: 1.55 },
+    ]
+  },
+  {
+    id: 'cl_001', league: 'Лига чемпионов', leagueCode: 'CL',
+    home: 'Bayern Munich', away: 'PSG',
+    homeFlag: '🔴', awayFlag: '🔵',
+    time: 'Завтра 22:00',
+    odds: { h: 1.95, d: 3.60, a: 3.80 },
+    totals: [
+      { label: 'Тотал больше 2.5', odds: 1.70 },
+      { label: 'Тотал больше 3.5', odds: 2.50 },
+      { label: 'Тотал меньше 2.5', odds: 2.20 },
+      { label: 'Тотал меньше 3.5', odds: 1.55 },
+    ],
+    btts: { yes: 1.80, no: 1.95 },
+    handicap: [
+      { label: 'Ф1 (-1)', odds: 3.10 },
+      { label: 'Ф2 (+1)', odds: 1.40 },
+    ]
+  },
+  {
+    id: 'nba_001', league: 'НБА', leagueCode: 'NBA',
+    home: 'Lakers', away: 'Celtics',
+    homeFlag: '💜', awayFlag: '💚',
+    time: 'Сегодня 03:30',
+    odds: { h: 2.20, d: null, a: 1.70 },
+    totals: [
+      { label: 'Тотал больше 215.5', odds: 1.90 },
+      { label: 'Тотал больше 220.5', odds: 1.90 },
+      { label: 'Тотал меньше 215.5', odds: 1.90 },
+      { label: 'Тотал меньше 220.5', odds: 1.90 },
+    ],
+    btts: null,
+    handicap: [
+      { label: 'Ф1 (-4.5)', odds: 1.90 },
+      { label: 'Ф2 (+4.5)', odds: 1.90 },
+    ]
+  },
+  {
+    id: 'sa_001', league: 'Серия А', leagueCode: 'SA',
+    home: 'Inter Milan', away: 'AC Milan',
+    homeFlag: '🔵', awayFlag: '🔴',
+    time: 'Вс 20:45',
+    odds: { h: 2.05, d: 3.30, a: 3.60 },
+    totals: [
+      { label: 'Тотал больше 2.5', odds: 1.95 },
+      { label: 'Тотал больше 3.5', odds: 2.90 },
+      { label: 'Тотал меньше 2.5', odds: 1.85 },
+      { label: 'Тотал меньше 3.5', odds: 1.40 },
+    ],
+    btts: { yes: 1.85, no: 1.90 },
+    handicap: [
+      { label: 'Ф1 (-0.5)', odds: 2.40 },
+      { label: 'Ф2 (+0.5)', odds: 1.60 },
+    ]
+  },
+];
+
+async function loadBetMatches() {
+  // Show sample matches immediately
+  betMatches = [...SAMPLE_MATCHES];
+  renderBetMatches();
+
+  try {
+    // Load all sport markets with external_id grouped by match
+    const data = await supaFetch('/rest/v1/markets?cat=eq.sport&active=eq.true&external_id=not.is.null&order=created_at.asc&limit=100&select=*');
+    if (!data || !data.length) return;
+
+    // Group by match prefix: football_win_123 / football_goals_123 / football_btts_123
+    // nba_win_123 / nba_total_123
+    // f1_win_3_2026 / f1_podium_3_2026
+    const matchGroups = {};
+
+    data.forEach(m => {
+      const ext = m.external_id || '';
+      let matchKey, type, sport;
+
+      if (ext.startsWith('football_')) {
+        const parts = ext.split('_');
+        // football_win_12345 -> matchKey = football_12345
+        matchKey = 'football_' + parts.slice(2).join('_');
+        type = parts[1]; // win, goals, btts
+        sport = 'football';
+      } else if (ext.startsWith('nba_')) {
+        const parts = ext.split('_');
+        matchKey = 'nba_' + parts.slice(2).join('_');
+        type = parts[1]; // win, total
+        sport = 'nba';
+      } else if (ext.startsWith('f1_')) {
+        const parts = ext.split('_');
+        matchKey = 'f1_' + parts.slice(2).join('_');
+        type = parts[1]; // win, podium
+        sport = 'f1';
+      } else {
+        return;
+      }
+
+      if (!matchGroups[matchKey]) matchGroups[matchKey] = { sport, markets: {} };
+      matchGroups[matchKey].markets[type] = m;
+    });
+
+    const supaMatches = [];
+
+    Object.entries(matchGroups).forEach(([matchKey, group]) => {
+      const { sport, markets } = group;
+      const winM = markets.win || markets.podium || Object.values(markets)[0];
+      if (!winM) return;
+
+      const title = winM.title_ru || '';
+      let home, away, league, leagueCode, homeFlag, awayFlag, time;
+
+      if (sport === 'football') {
+        // "Sporting CP победит Tondela? (Primeira Liga)" -> parse
+        const m = title.match(/^(.+?) победит (.+?)\?/);
+        const leagueM = title.match(/\((.+?)\)/);
+        home = m ? m[1].trim() : 'Команда 1';
+        away = m ? m[2].replace(/\s*\(.*\)\s*/,'').trim() : 'Команда 2';
+        league = leagueM ? leagueM[1] : 'Футбол';
+        leagueCode = 'PL';
+        // Translate league names
+        const leagueMap = {
+          'Premier League': 'АПЛ', 'Primeira Liga': 'Прімейра Ліга',
+          'Ligue 1': 'Ліга 1', 'Bundesliga': 'Бундесліга',
+          'Serie A': 'Серія А', 'La Liga': 'Ла Ліга',
+          'Champions League': 'Ліга чемпіонів', 'Eredivisie': 'Ередивізі',
+        };
+        league = leagueMap[league] || league;
+        homeFlag = '⚽'; awayFlag = '⚽';
+        time = 'Скоро';
+      } else if (sport === 'nba') {
+        // "SAC победят SAS? (НБА)" -> parse
+        const m = title.match(/^(.+?) победят (.+?)\s*\(НБА\)\?/);
+        home = m ? m[1].trim() : 'Home';
+        away = m ? m[2].trim() : 'Away';
+        league = 'НБА'; leagueCode = 'NBA';
+        homeFlag = '🏀'; awayFlag = '🏀';
+        time = 'Скоро';
+      } else if (sport === 'f1') {
+        // "Ферстаппен выиграет Japanese Grand Prix 2026?" — show as race event
+        const mWin = title.match(/^(.+?) выиграет (.+?)\?/);
+        const mPod = title.match(/^(.+?) попадёт в топ-3 на (.+?)\?/);
+        if (mPod) {
+          home = mPod[1].trim();
+          away = 'Топ-3: ' + mPod[2].replace('?','').trim();
+        } else if (mWin) {
+          home = mWin[1].trim();
+          away = mWin[2].replace('?','').trim();
+        } else {
+          home = 'Гонщик';
+          away = 'Гонка';
+        }
+        league = 'Формула 1'; leagueCode = 'F1';
+        homeFlag = '🏎'; awayFlag = '🏁';
+        time = 'Скоро';
+      }
+
+      const prob = (winM.yes_prob || 55) / 100;
+      const h = parseFloat((1 / prob * 0.92).toFixed(2));
+      const a = parseFloat((1 / (1 - prob) * 0.92).toFixed(2));
+
+      const isLive = winM.is_live === true;
+      const liveScore = winM.live_score || null;
+      const isFT = liveScore && liveScore.includes('ФТ');
+      const match = {
+        id: matchKey,
+        league, leagueCode, home, away, homeFlag, awayFlag,
+        time: isLive ? '🔴 LIVE' : (isFT ? 'Завершён' : 'Скоро'),
+        isLive, isFT, liveScore,
+        odds: { h, d: 3.40, a },
+        totals: [],
+        btts: null,
+        handicap: []
+      };
+
+      // Add totals from goals/total markets
+      if (markets.goals) {
+        match.totals = [
+          { label: 'Тотал больше 2.5', odds: 1.85 },
+          { label: 'Тотал меньше 2.5', odds: 2.05 },
+        ];
+      } else if (markets.total) {
+        match.totals = [
+          { label: 'Тотал больше 220', odds: 1.90 },
+          { label: 'Тотал меньше 220', odds: 1.90 },
+        ];
+      }
+
+      // Add btts
+      if (markets.btts) {
+        match.btts = { yes: 1.72, no: 2.10 };
+      }
+
+      // Add handicap
+      match.handicap = [
+        { label: 'Ф1 (-1)', odds: parseFloat((h * 1.45).toFixed(2)) },
+        { label: 'Ф2 (+1)', odds: parseFloat((a * 0.72).toFixed(2)) },
+      ];
+
+      supaMatches.push(match);
+    });
+
+    // Filter out finished matches
+    const activeMatches = supaMatches.filter(m => !m.liveScore || !m.liveScore.includes('ФТ'));
+    if (activeMatches.length > 0) {
+      betMatches = activeMatches;
+    } else if (supaMatches.length > 0) {
+      betMatches = supaMatches; // show all if nothing upcoming
+    }
+    renderBetMatches();
+    console.log('Loaded', betMatches.length, 'matches from Supabase');
+  } catch(e) {
+    console.log('Bet matches load error:', e);
+  }
+}
+
+function convertSupabaseToMatches(markets) {
+  // Group markets by match (external_id prefix)
+  const matchMap = {};
+  markets.forEach(m => {
+    const extId = m.external_id || '';
+    const matchId = extId.replace(/^football_(win|goals|btts)_/, 'match_');
+    if (!matchMap[matchId]) matchMap[matchId] = [];
+    matchMap[matchId].push(m);
+  });
+
+  return Object.entries(matchMap).map(([matchId, ms]) => {
+    const winMarket = ms.find(m => m.external_id?.includes('_win_'));
+    const title = winMarket?.title_ru || ms[0].title_ru;
+    const parts = title.match(/^(.+?) победит (.+?)\?/);
+    const home = parts?.[1] || 'Команда 1';
+    const away = parts?.[2]?.split('?')[0]?.split(' (')[0] || 'Команда 2';
+    const leagueMatch = title.match(/\(([^)]+)\)/);
+    const league = leagueMatch?.[1] || 'Футбол';
+
+    // Convert yes_prob to odds
+    const prob = (winMarket?.yes_prob || 55) / 100;
+    const h = parseFloat((1 / prob * 0.9).toFixed(2));
+    const a = parseFloat((1 / (1-prob) * 0.9).toFixed(2));
+    const d = 3.40;
+
+    return {
+      id: matchId,
+      league,
+      leagueCode: 'PL',
+      home, away,
+      homeFlag: '⚽', awayFlag: '⚽',
+      time: 'Скоро',
+      odds: { h, d, a },
+      totals: [
+        { label: 'Тотал больше 2.5', odds: 1.85 },
+        { label: 'Тотал меньше 2.5', odds: 2.05 },
+      ],
+      btts: { yes: 1.72, no: 2.10 },
+      handicap: [
+        { label: 'Ф1 (-1)', odds: (h * 1.5).toFixed(2) * 1 },
+        { label: 'Ф2 (+1)', odds: (a * 0.7).toFixed(2) * 1 },
+      ]
+    };
+  }).filter(m => m);
+}
+
+function filterBetSport(code, btn) {
+  currentBetSportFilter = code;
+  document.querySelectorAll('#screen-bet .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderBetMatches();
+}
+
+// Top clubs for priority sorting
+const TOP_CLUBS = [
+  'Real Madrid','Barcelona','Manchester City','Manchester United','Liverpool',
+  'Chelsea','Arsenal','Tottenham','Bayern Munich','Borussia Dortmund',
+  'PSG','Paris Saint-Germain','Juventus','Inter Milan','AC Milan',
+  'Atletico Madrid','Ajax','Porto','Benfica','Celtic',
+  'Napoli','Roma','Lazio','Sevilla','Valencia',
+  'LeBron','Lakers','Celtics','Warriors','Heat','Knicks',
+  'Verstappen','Hamilton','Leclerc','Norris'
+];
+
+function getMatchPriority(m) {
+  if (m.isLive) return 0; // Live first
+  if (m.isFT) return 99;  // Finished last
+  // Check if home or away is a top club
+  const isTop = TOP_CLUBS.some(club =>
+    m.home?.toLowerCase().includes(club.toLowerCase()) ||
+    m.away?.toLowerCase().includes(club.toLowerCase())
+  );
+  // Top leagues get priority
+  const topLeagues = ['PL','PD','CL','SA','BL1'];
+  const isTopLeague = topLeagues.includes(m.leagueCode);
+  if (isTop && isTopLeague) return 1;
+  if (isTop) return 2;
+  if (isTopLeague) return 3;
+  return 4;
+}
+
+function renderBetMatches() {
+  const el = document.getElementById('bet-matches-list');
+  let matches = betMatches;
+  if (currentBetSportFilter !== 'all') {
+    matches = matches.filter(m => m.leagueCode === currentBetSportFilter);
+  }
+
+  if (!matches.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--muted);">Нет матчей</div>';
+    return;
+  }
+
+  // Sort: live → top clubs in top leagues → top clubs → top leagues → rest → finished
+  matches = [...matches].sort((a, b) => getMatchPriority(a) - getMatchPriority(b));
+
+  // Add LIVE section header if there are live matches
+  const liveMatches = matches.filter(m => m.isLive);
+  const otherMatches = matches.filter(m => !m.isLive);
+
+  let html = '';
+  if (liveMatches.length > 0) {
+    html += '<div style="padding:10px 14px 6px;font-size:11px;font-weight:700;letter-spacing:0.08em;color:#ef4444;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block;animation:pulse 1s infinite;"></span>LIVE СЕЙЧАС</div>';
+    html += liveMatches.map(m => renderMatchCard(m)).join('');
+    if (otherMatches.length > 0) {
+      html += '<div style="padding:10px 14px 6px;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--muted);">ПРЕДСТОЯЩИЕ</div>';
+    }
+  }
+  html += otherMatches.filter(m => !m.isFT).map(m => renderMatchCard(m)).join('');
+
+  // Show finished at the bottom collapsed
+  const ftMatches = matches.filter(m => m.isFT);
+  if (ftMatches.length > 0) {
+    html += '<div style="padding:10px 14px 6px;font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--muted);">ЗАВЕРШЁННЫЕ</div>';
+    html += ftMatches.map(m => renderMatchCard(m)).join('');
+  }
+
+  el.innerHTML = html;
+}
+
+function renderMatchCard(m) {
+  const isNBA = m.leagueCode === 'NBA';
+  const isF1 = m.leagueCode === 'F1';
+  const mainOdds = (isNBA || isF1)
+    ? `<div class="match-odds-wide">
+        ${oddsBtn(m.id, (isF1 ? 'Да' : m.home), 'П1', m.odds.h)}
+        ${oddsBtn(m.id, (isF1 ? 'Нет' : m.away), 'П2', m.odds.a)}
+       </div>`
+    : `<div class="match-odds">
+        ${oddsBtn(m.id, m.home, 'П1', m.odds.h)}
+        ${oddsBtn(m.id, 'Ничья', 'X', m.odds.d)}
+        ${oddsBtn(m.id, m.away, 'П2', m.odds.a)}
+       </div>`;
+
+  const totalsHtml = m.totals.map(t =>
+    oddsBtn(m.id, t.label, t.label, t.odds)
+  ).join('');
+
+  const bttsHtml = m.btts ? `
+    <div class="odds-section-title">Обе забьют</div>
+    <div class="match-odds-wide">
+      ${oddsBtn(m.id, 'Обе забьют — Да', 'ОЗ Да', m.btts.yes)}
+      ${oddsBtn(m.id, 'Обе забьют — Нет', 'ОЗ Нет', m.btts.no)}
+    </div>` : '';
+
+  const handicapHtml = m.handicap ? `
+    <div class="odds-section-title">Фора</div>
+    <div class="match-odds-wide">
+      ${m.handicap.map(h => oddsBtn(m.id, h.label, h.label, h.odds)).join('')}
+    </div>` : '';
+
+  const isF1Card = m.leagueCode === 'F1';
+
+  // Parse live score "1:2 45'" or "1:2"
+  let scoreHome = '', scoreAway = '', matchMinute = '';
+  if ((m.isLive || m.isFT) && m.liveScore) {
+    const sc = m.liveScore.replace('LIVE','').replace('ФТ','').trim();
+    const parts = sc.split(':');
+    scoreHome = parts[0]?.trim() || '0';
+    const awayParts = (parts[1] || '0').split(/\s+/);
+    scoreAway = awayParts[0]?.trim() || '0';
+    matchMinute = awayParts[1] || '';
+  }
+
+  return `<div class="match-card" id="match-${m.id}">
+    <div class="match-header">
+      <div class="match-league">${m.league.toUpperCase()}</div>
+      <div class="match-time">${m.isLive ? '<span style="color:#ef4444;font-weight:700;">● LIVE</span>' : (m.isFT ? '<span style="color:var(--muted);">Завершён</span>' : m.time)}</div>
+    </div>
+    ${isF1Card ? `
+    <div style="padding:12px 14px 8px;text-align:center;">
+      <div style="font-size:22px;margin-bottom:4px;">${m.homeFlag}</div>
+      <div style="font-size:15px;font-weight:700;">${m.home}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">${m.away}</div>
+    </div>` : `
+    <div class="match-teams">
+      <div class="match-team">
+        <div class="match-team-flag">${m.homeFlag}</div>
+        <div class="match-team-name">${m.home}</div>
+      </div>
+      ${m.isLive ? `
+      <div class="match-score-live">
+        <div class="match-score-nums">
+          <div class="match-score-num">${scoreHome}</div>
+          <div class="match-score-sep">:</div>
+          <div class="match-score-num">${scoreAway}</div>
+        </div>
+        <div class="match-score-time"><span class="live-dot"></span>${matchMinute || 'LIVE'}</div>
+      </div>` : m.isFT ? `
+      <div class="match-score-live">
+        <div class="match-score-nums">
+          <div class="match-score-num" style="color:var(--muted);">${scoreHome}</div>
+          <div class="match-score-sep">:</div>
+          <div class="match-score-num" style="color:var(--muted);">${scoreAway}</div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700;margin-top:2px;">ФТ</div>
+      </div>` : `<div class="match-vs">VS</div>`}
+      <div class="match-team">
+        <div class="match-team-flag">${m.awayFlag}</div>
+        <div class="match-team-name">${m.away}</div>
+      </div>
+    </div>`}
+    <div class="odds-section-title">Победитель</div>
+    ${mainOdds}
+    <div class="odds-section-title">Тотал</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 12px 8px;">${totalsHtml}</div>
+    ${bttsHtml}
+    ${handicapHtml}
+  </div>`;
+}
+
+function oddsBtn(matchId, label, shortLabel, odds) {
+  const id = `odds_${matchId}_${shortLabel.replace(/[^a-zA-Z0-9]/g,'_')}`;
+  const match = betMatches.find(m => m.id === matchId);
+  const matchTitle = match ? match.home + ' — ' + match.away : '';
+  return `<div class="odds-btn" id="${id}" onclick="toggleBetslipItem('${matchId}','${matchTitle}','${shortLabel}','${label}',${odds})">
+    <div class="odds-btn-label">${shortLabel}</div>
+    <div class="odds-btn-val">${odds.toFixed(2)}</div>
+  </div>`;
+}
+
+// ── BETSLIP ───────────────────────────────────────────────────────
+function toggleBetslipItem(matchId, matchTitle, pick, label, odds) {
+  const btnId = 'odds_' + matchId + '_' + pick.replace(/[^a-zA-Z0-9]/g,'_');
+  const panelId = 'inline-panel-' + matchId;
+
+  // Remove existing panel
+  document.getElementById(panelId)?.remove();
+
+  // If same pick clicked again — deselect
+  const existing = betslip.findIndex(b => b.matchId === matchId && b.pick === pick);
+  if (existing !== -1) {
+    betslip.splice(existing, 1);
+    document.getElementById(btnId)?.classList.remove('selected');
+    return;
+  }
+
+  // Remove other picks from same match
+  const sameMatch = betslip.findIndex(b => b.matchId === matchId);
+  if (sameMatch !== -1) {
+    const old = betslip[sameMatch];
+    const oldBtnId = 'odds_' + old.matchId + '_' + old.pick.replace(/[^a-zA-Z0-9]/g,'_');
+    document.getElementById(oldBtnId)?.classList.remove('selected');
+    betslip.splice(sameMatch, 1);
+  }
+
+  betslip.push({ matchId, matchTitle, pick, label, odds });
+  document.getElementById(btnId)?.classList.add('selected');
+
+  // Show inline bet panel below match card
+  const matchCard = document.getElementById('match-' + matchId);
+  if (!matchCard) return;
+
+  const panel = document.createElement('div');
+  panel.id = panelId;
+  panel.className = 'inline-bet-panel';
+  panel.innerHTML =
+    '<div style="font-size:13px;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;">' +
+      '<span>' + label + '</span>' +
+      '<span style="color:var(--ton);font-family:monospace;">' + odds.toFixed(2) + '</span>' +
+    '</div>' +
+    '<div class="inline-bet-amounts">' +
+      '<div class="inline-bet-amount" onclick="setInlineBetAmount(\'' + panelId + '\',1,' + odds + ')">1</div>' +
+      '<div class="inline-bet-amount" onclick="setInlineBetAmount(\'' + panelId + '\',5,' + odds + ')">5</div>' +
+      '<div class="inline-bet-amount" onclick="setInlineBetAmount(\'' + panelId + '\',10,' + odds + ')">10</div>' +
+      '<div class="inline-bet-amount" onclick="setInlineBetAmount(\'' + panelId + '\',25,' + odds + ')">25</div>' +
+    '</div>' +
+    '<div class="inline-bet-input-row">' +
+      '<input class="inline-bet-input" id="' + panelId + '-input" type="number" inputmode="decimal" placeholder="0.0 TON" oninput="updateInlinePotential(\'' + panelId + '\',' + odds + ')" />' +
+      '<button class="inline-bet-confirm" id="' + panelId + '-btn" onclick="placeInlineBet(\'' + matchId + '\',\'' + label.replace(/'/g,"\'") + '\',' + odds + ')">Ставить</button>' +
+    '</div>' +
+    '<div class="inline-bet-potential">' +
+      '<span>Выигрыш:</span>' +
+      '<span id="' + panelId + '-potential">0.00 TON</span>' +
+    '</div>';
+
+  matchCard.after(panel);
+  setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+}
+
+function setInlineBetAmount(panelId, amount, odds) {
+  const input = document.getElementById(panelId + '-input');
+  if (!input) return;
+  input.value = amount;
+  document.querySelectorAll('#' + panelId + ' .inline-bet-amount').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.textContent) === amount);
+  });
+  updateInlinePotential(panelId, odds);
+}
+
+function updateInlinePotential(panelId, odds) {
+  const input = document.getElementById(panelId + '-input');
+  const potEl = document.getElementById(panelId + '-potential');
+  if (!input || !potEl) return;
+  potEl.textContent = ((parseFloat(input.value) || 0) * odds).toFixed(2) + ' TON';
+}
+
+async function placeInlineBet(matchId, label, odds) {
+  const panelId = 'inline-panel-' + matchId;
+  const stake = parseFloat(document.getElementById(panelId + '-input')?.value) || 0;
+  if (stake < 0.1) { showBetToast('Введите сумму', 'no'); return; }
+  if (userBalance < stake) { showBetToast('Недостаточно баланса — пополните', 'no'); return; }
+
+  const btn = document.getElementById(panelId + '-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+  try {
+    await supaFetch('/rest/v1/transactions', 'POST', {
+      telegram_id: userTelegramId, amount: -stake,
+      type: 'bet', comment: 'BET:' + label + ':' + odds, status: 'pending'
+    });
+    await supaFetch('/rest/v1/users?telegram_id=eq.' + userTelegramId, 'PATCH', { balance: userBalance - stake });
+    userBalance -= stake;
+    updateBalanceDisplay();
+    document.getElementById(panelId)?.remove();
+    const selBtn = document.getElementById('odds_' + matchId + '_' + (betslip.find(b=>b.matchId===matchId)?.pick||'').replace(/[^a-zA-Z0-9]/g,'_'));
+    if (selBtn) selBtn.classList.remove('selected');
+    betslip = betslip.filter(b => b.matchId !== matchId);
+    showBetToast('✓ Ставка принята! Выигрыш: ' + (stake * odds).toFixed(2) + ' TON', 'yes');
+  } catch(e) {
+    showBetToast('Ошибка, попробуйте ещё раз', 'no');
+    if (btn) { btn.disabled = false; btn.textContent = 'Ставить'; }
+  }
+}
+
+function updateBetslipBar() {}
+
+</script>
+</body>
+</html>
