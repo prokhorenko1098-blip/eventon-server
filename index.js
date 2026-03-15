@@ -371,10 +371,24 @@ async function checkLiveMatches() {
     for (const match of liveMatches) {
       const homeGoals = match.score?.fullTime?.home ?? match.score?.halfTime?.home ?? 0;
       const awayGoals = match.score?.fullTime?.away ?? match.score?.halfTime?.away ?? 0;
-      const minute = match.minute || '';
-      const score = `${homeGoals}:${awayGoals} ${minute}'`.trim();
 
-      // Update win market with live score + minute
+      // Get match minute and status
+      let timeLabel = '';
+      const status = match.status;
+      const minute = match.minute;
+
+      if (status === 'IN_PLAY') {
+        timeLabel = minute ? `${minute}'` : 'LIVE';
+      } else if (status === 'PAUSED' || status === 'HALF_TIME') {
+        timeLabel = 'ПТ'; // Перерыв
+      } else if (status === 'EXTRA_TIME') {
+        timeLabel = `ДВ ${minute}'`;
+      } else if (status === 'PENALTY') {
+        timeLabel = 'Пен.';
+      }
+
+      const score = `${homeGoals}:${awayGoals} ${timeLabel}`.trim();
+
       await sb(`/rest/v1/markets?external_id=eq.football_win_${match.id}`, 'PATCH', {
         live_score: score,
         is_live: true
@@ -389,9 +403,11 @@ async function checkLiveMatches() {
     if (finRes.ok) {
       const finData = await finRes.json();
       for (const match of (finData.matches || []).slice(0, 20)) {
+        const h = match.score?.fullTime?.home ?? 0;
+        const a = match.score?.fullTime?.away ?? 0;
         await sb(`/rest/v1/markets?external_id=eq.football_win_${match.id}`, 'PATCH', {
           is_live: false,
-          live_score: `${match.score?.fullTime?.home ?? 0}:${match.score?.fullTime?.away ?? 0} ФТ`
+          live_score: `${h}:${a} ФТ`
         });
       }
     }
