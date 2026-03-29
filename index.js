@@ -123,20 +123,32 @@ async function fetchNBAResults() {
 // ── F1 API (free, no key needed) ───────────────────────────────────
 async function fetchF1Races() {
   const year = new Date().getFullYear();
-  const res = await fetch(`https://api.jolpi.ca/ergast/f1/${year}.json`);
-  if (!res.ok) return [];
-  const data = await res.json();
-  const races = data?.MRData?.RaceTable?.Races || [];
+  // Try multiple F1 API endpoints
+  const urls = [
+    `https://ergast.com/api/f1/${year}.json`,
+    `https://api.jolpi.ca/ergast/f1/${year}.json`,
+  ];
+  
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const races = data?.MRData?.RaceTable?.Races || [];
 
-  // Find upcoming races (next 14 days)
-  const now = new Date();
-  const soon = new Date();
-  soon.setDate(soon.getDate() + 30);
+      const now = new Date();
+      const soon = new Date();
+      soon.setDate(soon.getDate() + 30);
 
-  return races.filter(r => {
-    const raceDate = new Date(r.date + 'T' + (r.time || '12:00:00'));
-    return raceDate >= now && raceDate <= soon;
-  });
+      return races.filter(r => {
+        const raceDate = new Date(r.date + 'T' + (r.time || '12:00:00'));
+        return raceDate >= now && raceDate <= soon;
+      });
+    } catch(e) {
+      console.log(`F1 API failed (${url}):`, e.message);
+    }
+  }
+  return [];
 }
 
 // ── MARKET CREATION ────────────────────────────────────────────────
@@ -423,14 +435,26 @@ async function checkLiveMatches() {
 // ── MAIN JOBS ──────────────────────────────────────────────────────
 async function runDailyJob() {
   console.log('\n🚀 Running daily sports job:', new Date().toISOString());
+  
   try {
     await createFootballMarkets();
-    await createNBAMarkets();
-    await createF1Markets();
-    console.log('✅ Daily job complete');
   } catch (e) {
-    console.error('Daily job error:', e);
+    console.error('Football job error:', e.message);
   }
+  
+  try {
+    await createNBAMarkets();
+  } catch (e) {
+    console.error('NBA job error:', e.message);
+  }
+  
+  try {
+    await createF1Markets();
+  } catch (e) {
+    console.error('F1 job error:', e.message);
+  }
+  
+  console.log('✅ Daily job complete');
 }
 
 async function runResolutionJob() {
