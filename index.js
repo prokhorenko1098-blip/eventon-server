@@ -251,8 +251,8 @@ async function createNBAMarkets() {
   console.log(`Found ${games.length} upcoming NBA games`);
 
   for (const game of games) {
-    const home = game.home_team?.abbreviation || game.home_team?.full_name || 'Home';
-    const away = game.visitor_team?.abbreviation || game.visitor_team?.full_name || 'Away';
+    const home = game.home_team?.full_name || game.home_team?.name || game.home_team?.abbreviation || 'Home';
+    const away = game.visitor_team?.full_name || game.visitor_team?.name || game.visitor_team?.abbreviation || 'Away';
     const gameDate = new Date(game.date);
     const daysUntil = Math.ceil((gameDate - new Date()) / (1000 * 60 * 60 * 24));
 
