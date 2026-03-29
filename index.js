@@ -131,7 +131,7 @@ async function fetchF1Races() {
   // Find upcoming races (next 14 days)
   const now = new Date();
   const soon = new Date();
-  soon.setDate(soon.getDate() + 14);
+  soon.setDate(soon.getDate() + 30);
 
   return races.filter(r => {
     const raceDate = new Date(r.date + 'T' + (r.time || '12:00:00'));
@@ -162,7 +162,7 @@ async function createMarket(market) {
 // ── CREATE FOOTBALL MARKETS ────────────────────────────────────────
 async function createFootballMarkets() {
   console.log('🔍 Fetching football matches...');
-  const matches = await fetchFootballMatches(2);
+  const matches = await fetchFootballMatches(14);
   console.log(`Found ${matches.length} upcoming matches`);
 
   for (const match of matches) {
@@ -235,7 +235,7 @@ async function createFootballMarkets() {
 async function createNBAMarkets() {
   if (!NBA_KEY) { console.log('⚠️ No NBA key, skipping'); return; }
   console.log('🔍 Fetching NBA games...');
-  const games = await fetchNBAGames(2);
+  const games = await fetchNBAGames(14);
   console.log(`Found ${games.length} upcoming NBA games`);
 
   for (const game of games) {
@@ -446,6 +446,9 @@ async function runResolutionJob() {
 // ── SCHEDULE ───────────────────────────────────────────────────────
 // Every day at 9:00 AM UTC — create markets for upcoming matches
 cron.schedule('0 9 * * *', runDailyJob);
+
+// Every day at 21:00 UTC — refresh markets again
+cron.schedule('0 21 * * *', runDailyJob);
 
 // Every day at 23:00 UTC — resolve finished matches
 cron.schedule('0 23 * * *', runResolutionJob);
