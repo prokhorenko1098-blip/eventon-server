@@ -251,6 +251,10 @@ async function createNBAMarkets() {
   console.log(`Found ${games.length} upcoming NBA games`);
 
   for (const game of games) {
+    // Log first game to see data structure
+    if (games.indexOf(game) === 0) {
+      console.log('NBA game sample:', JSON.stringify(game).substring(0, 300));
+    }
     const home = game.home_team?.full_name || game.home_team?.name || game.home_team?.abbreviation || 'Home';
     const away = game.visitor_team?.full_name || game.visitor_team?.name || game.visitor_team?.abbreviation || 'Away';
     const gameDate = new Date(game.date);
