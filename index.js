@@ -472,28 +472,17 @@ async function runResolutionJob() {
 }
 
 // ── SCHEDULE ───────────────────────────────────────────────────────
-// Every day at 9:00 AM UTC — create markets for upcoming matches
-cron.schedule('0 9 * * *', runDailyJob);
-
-// Every day at 21:00 UTC — refresh markets again
-cron.schedule('0 21 * * *', runDailyJob);
-
-// Every day at 23:00 UTC — resolve finished matches
-cron.schedule('0 23 * * *', runResolutionJob);
-
-// Every 5 minutes — check live scores
-cron.schedule('*/5 * * * *', checkLiveMatches);
+// Every 6 hours — parse news and create prediction markets
+cron.schedule('0 */6 * * *', createNewsMarkets);
 
 // ── STARTUP ────────────────────────────────────────────────────────
-console.log('⚡ Eventon Sports Server starting...');
-console.log('📅 Schedule: Create markets @ 09:00 UTC, Resolve @ 23:00 UTC');
-console.log('🏟 Sports: Football (PL/PD/SA/BL1/CL), NBA, F1');
+console.log('⚡ Eventon Prediction Markets Server starting...');
+console.log('📅 Schedule: News parsing every 6 hours');
+console.log('🔮 Mode: Prediction markets only (Event section)');
 
 ensureSchema().then(() => {
-  // Run immediately on startup
-  runDailyJob();
-  // Parse news on startup too
-  setTimeout(createNewsMarkets, 5000);
+  // Parse news on startup
+  setTimeout(createNewsMarkets, 3000);
 });
 
 // Keep alive
