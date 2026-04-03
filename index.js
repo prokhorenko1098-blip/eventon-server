@@ -471,9 +471,56 @@ async function runResolutionJob() {
   }
 }
 
+// ── CHECK DEADLINES ────────────────────────────────────────────────
+async function checkDeadlines() {
+  console.log('⏰ Checking market deadlines...');
+  try {
+    // Получаем все активные рынки
+    const res = await fetch(SUPABASE_URL + '/rest/v1/markets?active=eq.true&select=id,title_ru,deadline_days,created_at,yes_prob', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+      }
+    });
+    if (!res.ok) return;
+    const markets = await res.json();
+
+    const now = new Date();
+    let closed = 0;
+
+    for (const market of markets) {
+      const createdAt = new Date(market.created_at);
+      const deadlineDays = parseInt(market.deadline_days) || 30;
+      const expiresAt = new Date(createdAt.getTime() + deadlineDays * 24 * 60 * 60 * 1000);
+
+      if (now >= expiresAt) {
+        // Рынок истёк — закрываем
+        await fetch(SUPABASE_URL + '/rest/v1/markets?id=eq.' + market.id, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ active: false })
+        });
+        console.log(`✓ Closed expired market #${market.id}: ${market.title_ru?.substring(0, 50)}`);
+        closed++;
+      }
+    }
+
+    console.log(`⏰ Deadline check done: ${closed} markets closed out of ${markets.length}`);
+  } catch(e) {
+    console.error('Deadline check error:', e);
+  }
+}
+
 // ── SCHEDULE ───────────────────────────────────────────────────────
 // Every 6 hours — parse news and create prediction markets
 cron.schedule('0 */6 * * *', createNewsMarkets);
+
+// Every day at 00:01 UTC — check deadlines and close expired markets
+cron.schedule('1 0 * * *', checkDeadlines);
 
 // ── STARTUP ────────────────────────────────────────────────────────
 console.log('⚡ Eventon Prediction Markets Server starting...');
@@ -483,6 +530,8 @@ console.log('🔮 Mode: Prediction markets only (Event section)');
 ensureSchema().then(() => {
   // Parse news on startup
   setTimeout(createNewsMarkets, 3000);
+  // Check deadlines on startup
+  setTimeout(checkDeadlines, 5000);
 });
 
 // Keep alive
